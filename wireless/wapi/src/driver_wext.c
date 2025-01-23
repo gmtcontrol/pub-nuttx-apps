@@ -125,6 +125,10 @@ int wpa_driver_wext_get_key_ext(int sockfd, FAR const char *ifname,
             *alg = WPA_ALG_CCMP;
             break;
 
+          case IW_ENCODE_ALG_SAE:
+            *alg = WPA_ALG_SAE;
+            break;
+
           default:
             free(ext);
             return -EINVAL;
@@ -198,6 +202,10 @@ int wpa_driver_wext_set_key_ext(int sockfd, FAR const char *ifname,
 
       case WPA_ALG_CCMP:
         ext->alg = IW_ENCODE_ALG_CCMP;
+        break;
+
+      case WPA_ALG_SAE:
+        ext->alg = IW_ENCODE_ALG_SAE;
         break;
 
       default:

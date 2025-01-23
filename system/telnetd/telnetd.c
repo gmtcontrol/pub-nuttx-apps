@@ -62,12 +62,13 @@ int main(int argc, FAR char *argv[])
     CONFIG_SYSTEM_TELNETD_PROGNAME,
 #endif
     argv_,
+    "eth0",
   };
 
   int daemon = 1;
   int opt;
 
-  while ((opt = getopt(argc, argv, "46cp:")) != ERROR)
+  while ((opt = getopt(argc, argv, "46cp:i:")) != ERROR)
     {
       switch (opt)
         {
@@ -88,6 +89,10 @@ int main(int argc, FAR char *argv[])
           case 'p':
             config.d_port = atoi(optarg);
             break;
+
+        case 'i':
+          config.ifname = optarg;
+          break;
 
           default:
             fprintf(stderr, "Usage: %s [-4|-6] [-p port]\n", argv[0]);

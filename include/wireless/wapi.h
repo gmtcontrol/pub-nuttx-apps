@@ -1,21 +1,12 @@
 /****************************************************************************
  * apps/include/wireless/wapi.h
  *
- *   Copyright (C) 2017, 2019 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Adapted for NuttX from WAPI:
- *
- *   Copyright (c) 2010, Volkan YAZICI <volkan.yazici@gmail.com>
- *   All rights reserved.
- *
- * And includes WPA supplicant logic contributed by:
- *
- *   Author: Simon Piriou <spiriou31@gmail.com>
- *
- * Which was adapted to NuttX from driver_ext.h
- *
- *   Copyright (c) 2003-2005, Jouni Malinen <j@w1.fi>
+ * SPDX-License-Identifier: BSD-3-Clause
+ * SPDX-FileCopyrightText: 2017,2019 Gregory Nutt
+ * SPDX-FileCopyrightText: 2010, Volkan YAZICI <volkan.yazici@gmail.com>
+ * SPDX-FileCopyrightText: 2003-2005, Jouni Malinen <j@w1.fi>
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
+ * SPDX-FileContributor: Simon Piriou <spiriou31@gmail.com>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -259,6 +250,7 @@ enum wpa_alg_e
   WPA_ALG_GCMP,
   WPA_ALG_SMS4,
   WPA_ALG_KRK,
+  WPA_ALG_SAE,
   WPA_ALG_GCMP_256,
   WPA_ALG_CCMP_256,
   WPA_ALG_BIP_GMAC_128,
@@ -1015,6 +1007,18 @@ int wapi_set_power_save(int sock, FAR const char *ifname, bool on);
  ****************************************************************************/
 
 int wapi_get_power_save(int sock, FAR const char *ifname, bool *on);
+
+/****************************************************************************
+ * Name: wapi_get_ap_stas
+ *
+ * Description:
+ *   Gets associated STAs of the device.
+ *
+ ****************************************************************************/
+
+int wapi_get_ap_stas(int sock, FAR const char *ifname,
+                     int *num, struct ether_addr *mac);
+
 
 #undef EXTERN
 #ifdef __cplusplus

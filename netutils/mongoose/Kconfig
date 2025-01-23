@@ -1,0 +1,86 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config NETUTILS_MONGOOSE
+	bool "Mongoose library"
+	default n
+	---help---
+		Mongoose is a network library for C/C++. It provides event-driven
+		non-blocking APIs for TCP, UDP, HTTP, WebSocket, MQTT, and other
+		protocols.
+
+if NETUTILS_MONGOOSE
+
+config MONGOOSE_VERSION
+	string "Version"
+	default "7.16"
+
+config MONGOOSE_SSI
+	bool "SSI support"
+	default y
+
+if MONGOOSE_SSI
+
+config MONGOOSE_SSI_BUFSIZE
+	int "SSI suffer size"
+	default 256
+
+endif # MONGOOSE_SSI
+
+config MONGOOSE_IOSIZE
+  int "I/O buffer size"
+  default 2048
+
+config MONGOOSE_PATHSIZE
+  int "Path buffer size"
+  default 256
+
+config MONGOOSE_NONBLOCKING
+  bool "Non-blocking message"
+  default n
+
+config MONGOOSE_OTA
+	bool "OTA support"
+	default y
+
+if MONGOOSE_OTA
+choice
+	prompt "OTA type"
+	default MONGOOSE_OTA_CUSTOM
+
+config MONGOOSE_OTA_CUSTOM
+	bool "Custom"
+
+endchoice # "OTA type"
+
+endif # MONGOOSE_OTA
+
+config MONGOOSE_TLS
+	bool "TLS support"
+	default n
+
+if MONGOOSE_TLS
+
+choice
+	prompt "TLS Type"
+	default MONGOOSE_TLS_BUILTIN
+
+config MONGOOSE_TLS_BUILTIN
+	bool "Builtin"
+
+config MONGOOSE_TLS_MBED
+	bool "MbedTLS"
+
+config MONGOOSE_TLS_OPENSSL
+	bool "OpenSSL"
+
+config MONGOOSE_TLS_WOLFSSL
+	bool "WolfSSL"
+
+endchoice
+
+endif # MONGOOSE_TLS
+
+endif # NETUTILS_MONGOOSE

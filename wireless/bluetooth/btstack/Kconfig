@@ -1,0 +1,184 @@
+config BTSTACK
+	bool "Bluekitchen BR/EDR+LE Stack"
+	default n
+	---help---
+		Enable Bluekitchen BR/EDR+LE stack.
+
+if BTSTACK
+
+config BTSTACK_VERSION
+	string "Version"
+	default "1.6.1"
+	---help---
+		BTStack version.
+
+config BTSTACK_BLE
+	bool "BTStack BLE"
+	default n
+
+if BTSTACK_BLE
+
+config BTSTACK_BLE_GATT
+	bool "BLE GATT Services"
+	default n
+
+config BTSTACK_BLE_SECURE_CONNECTIONS
+	bool "BLE secure connnection"
+	default n
+
+config BTSTACK_BLE_ATT_DELAYED_RESP
+	bool "ATT delayed response"
+	default n
+
+config BTSTACK_NVM_NUM_DEVICE_DB_ENTRIES
+	int "Number of LE device DB entries"
+	default 2
+	---help---
+		Max number of LE Device DB entries that can be stored.
+
+menu "BLE roles"
+
+config BTSTACK_BLE_CENTRAL
+	bool "Central role"
+	default n
+
+config BTSTACK_BLE_PERIPHERAL
+	bool "Peripheral role"
+	default n
+
+endmenu # "BLE role configuration"
+
+endif # BTSTACK_BLE
+
+config BTSTACK_EDR
+	bool "BTStack BR/EDR"
+	default n
+
+if BTSTACK_EDR
+
+config BTSTACK_GATT_OVER_CLASSIC
+	bool "Gatt over classic"
+	default n
+
+config BTSTACK_LOCAL_NAME
+	bool "Local name support"
+	default n
+
+config BTSTACK_NVM_NUM_LINK_KEYS
+	int "Number of classic link keys"
+	default 2
+	---help---
+		Max number of Classic Link Keys that can be stored.
+
+config BTSTACK_L2CAP_ENHANCED_RETRANSMISSION_MODE
+	bool "Enable Enhanced Retransmission Mode for L2CAP Channels"
+	default n
+
+if BTSTACK_L2CAP_ENHANCED_RETRANSMISSION_MODE
+config BTSTACK_L2CAP_ENHANCED_RETRANSMISSION_MODE_RFCOMM
+	bool "Enable Enhanced Retransmission Mode for RFCOMM"
+	default n
+endif # BTSTACK_L2CAP_ENHANCED_RETRANSMISSION_MODE
+
+endif # BTSTACK_EDR
+
+config BTSTACK_MESH
+	bool "Mesh Network"
+	default n
+
+if BTSTACK_MESH
+
+config BTSTACK_MESH_GATT
+	bool "Mesh GATT Services"
+	default n
+
+endif # BTSTACK_MESH
+
+config BTSTACK_AUDIO
+	bool "BTStack audio support"
+	default n
+
+if BTSTACK_AUDIO
+
+choice
+	prompt "SCO data route"
+	default BTSTACK_SCO_OVER_HCI
+
+config BTSTACK_SCO_OVER_HCI
+	bool "Routed over HCI"
+
+config BTSTACK_SCO_OVER_PCM
+	bool "Routed over PCM"
+
+endchoice # "SCO data route"
+
+endif # BTSTACK_AUDIO
+
+config BTSTACK_SOFTWARE_AES128
+	bool "Software AES-128 support"
+	default n
+
+menu "Log Output"
+
+config BTSTACK_LOG_INFO
+	bool "Info log"
+  depends on BTSTACK_PRINTF_HEXDUMP
+	default n
+
+config BTSTACK_LOG_DEBUG
+	bool "Debug log"
+  depends on BTSTACK_PRINTF_HEXDUMP
+	default n
+
+config BTSTACK_LOG_ERROR
+	bool "Error log"
+  depends on BTSTACK_PRINTF_HEXDUMP
+	default n
+
+endmenu # "Log Output"
+
+config BTSTACK_PRINTF_HEXDUMP
+	bool "Hex dump on stdout"
+	default n
+
+config BTSTACK_HCI_ACL_PAYLOAD_SIZE
+	int "HCI payload size"
+	default 1695
+
+config BTSTACK_HCI_INCOMING_PRE_BUFFER_SIZE
+	int "HCI incoming buffer size"
+	default 14
+
+config BTSTACK_HCI_OUTGOING_PRE_BUFFER_SIZE
+	int "HCI outgoing buffer size"
+	default 4
+
+config BTSTACK_ASSERT
+	bool "Assertion usage"
+	default n
+
+config BTSTACK_MALLOC
+	bool "Dynamic memory usage"
+	default y
+
+config BTSTACK_STDIN
+	bool "Standard input usage"
+	default y
+
+config BTSTACK_POSIX_TIME
+	bool "Posix time usage"
+	default y
+
+config BTSTACK_POSIX_FILEIO
+	bool "Posix file I/O usage"
+	default n
+
+if BTSTACK_POSIX_TIME
+
+config BTSTACK_MONOTONIC_CLOCK
+	bool "Monotonic clock usage"
+	default y
+
+endif # BTSTACK_POSIX_TIME
+
+endif # BTSTACK

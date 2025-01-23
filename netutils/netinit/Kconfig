@@ -106,6 +106,18 @@ config NETINIT_RETRYMSEC
 
 endif # NETINIT_MONITOR
 
+config NETLINK_MONITOR
+	bool "Monitor custom state"
+	default n
+	depends on NETDEV_PHY_IOCTL && NET_UDP
+	---help---
+		By default the net initialization thread will bring-up the network
+		then exit, freeing all of the resources that it required.  This is a
+		good behavior for systems with limited memory.
+
+		If this option is selected, however, then the network initialization
+		thread will persist forever; it will monitor the network status.
+
 config NETINIT_THREAD_STACKSIZE
 	int "Network initialization thread stack size"
 	default DEFAULT_TASK_STACKSIZE

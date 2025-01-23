@@ -28,7 +28,9 @@
 #include <pthread.h>
 
 #include <nuttx/mm/circbuf.h>
-
+#ifdef CONFIG_LIBFLASH
+#include <flash/partition.h>
+#endif
 #include "ymodem.h"
 
 /****************************************************************************
@@ -38,7 +40,7 @@
 struct ymodem_priv_s
 {
   int fd;
-  FAR char *foldname;
+  FAR char *filename;
   size_t file_saved_size;
   FAR char *skip_perfix;
   FAR char *skip_suffix;
@@ -46,11 +48,13 @@ struct ymodem_priv_s
   /* Async */
 
   struct circbuf_s circ;
+#ifndef CONFIG_DISABLE_PTHREAD
   pthread_mutex_t mutex;
   pthread_cond_t cond;
+  pthread_t pid;
+#endif
   size_t buffersize;
   size_t threshold;
-  pthread_t pid;
   bool exited;
 };
 
@@ -58,6 +62,7 @@ struct ymodem_priv_s
  * Private Functions
  ****************************************************************************/
 
+#ifndef CONFIG_DISABLE_PTHREAD
 static int flush_data(FAR struct ymodem_priv_s *priv)
 {
   while (priv->fd > 0 && circbuf_used(&priv->circ))
@@ -108,12 +113,14 @@ static FAR void *async_write(FAR void *arg)
   pthread_mutex_unlock(&priv->mutex);
   return NULL;
 }
+#endif /* CONFIG_DISABLE_PTHREAD */
 
 static int write_data(FAR struct ymodem_priv_s *priv,
                       FAR const uint8_t *data, size_t size)
 {
   size_t i = 0;
 
+#ifndef CONFIG_DISABLE_PTHREAD
   if (priv->buffersize)
     {
       pthread_mutex_lock(&priv->mutex);
@@ -145,9 +152,11 @@ static int write_data(FAR struct ymodem_priv_s *priv,
           pthread_cond_signal(&priv->cond);
         }
 
+
       pthread_mutex_unlock(&priv->mutex);
     }
   else
+#endif /* CONFIG_DISABLE_PTHREAD */
     {
       while (i < size)
         {
@@ -171,11 +180,11 @@ static int handler(FAR struct ymodem_ctx_s *ctx)
 
   if (ctx->packet_type == YMODEM_FILENAME_PACKET)
     {
-      char temp[PATH_MAX + 1];
       FAR char *filename;
 
       if (priv->fd > 0)
         {
+        #ifndef CONFIG_DISABLE_PTHREAD
           if (priv->buffersize)
             {
               pthread_mutex_lock(&priv->mutex);
@@ -186,6 +195,7 @@ static int handler(FAR struct ymodem_ctx_s *ctx)
                   return ret;
                 }
             }
+          #endif /* CONFIG_DISABLE_PTHREAD */
 
           close(priv->fd);
         }
@@ -214,11 +224,9 @@ static int handler(FAR struct ymodem_ctx_s *ctx)
             }
         }
 
-      if (priv->foldname != NULL)
+      if (priv->filename != NULL)
         {
-          snprintf(temp, sizeof(temp), "%s/%s", priv->foldname,
-                   filename);
-          filename = temp;
+          filename = priv->filename;
         }
 
       priv->fd = open(filename, O_CREAT | O_WRONLY, 0777);
@@ -226,8 +234,17 @@ static int handler(FAR struct ymodem_ctx_s *ctx)
         {
           return -errno;
         }
-
+      ctx->file_done = 0;
       priv->file_saved_size = 0;
+
+#ifdef CONFIG_LIBFLASH
+      if (flash_partition_erase_last_sector(priv->fd) < 0)
+        {
+          return -errno;
+        }
+#else
+#warning "Firmware upgrade trusts the Flash library support!"
+#endif /* CONFIG_LIBFLASH */
     }
   else if (ctx->packet_type == YMODEM_DATA_PACKET)
     {
@@ -249,11 +266,14 @@ static int handler(FAR struct ymodem_ctx_s *ctx)
         }
 
       priv->file_saved_size += size;
+
+      ctx->file_done = (priv->file_saved_size >= ctx->file_length);
     }
 
   return 0;
 }
 
+#ifndef CONFIG_DISABLE_PTHREAD
 static int async_init(FAR struct ymodem_priv_s *priv)
 {
   int ret;
@@ -309,6 +329,7 @@ static void async_uninit(FAR struct ymodem_priv_s *priv)
   pthread_mutex_destroy(&priv->mutex);
   circbuf_uninit(&priv->circ);
 }
+#endif /* CONFIG_DISABLE_PTHREAD */
 
 static void show_usage(FAR const char *progname)
 {
@@ -344,7 +365,7 @@ int main(int argc, FAR char *argv[])
 {
   struct ymodem_priv_s priv;
   struct ymodem_ctx_s ctx;
-  FAR char *devname = NULL;
+  FAR char *devname = "/dev/console";
   int ret;
 
   struct option options[] =
@@ -357,6 +378,7 @@ int main(int argc, FAR char *argv[])
 
   memset(&priv, 0, sizeof(priv));
   memset(&ctx, 0, sizeof(ctx));
+  priv.filename = "/dev/img0";
   while ((ret = getopt_long(argc, argv, "b:d:f:hk:p:s:t:", options, NULL))
          != ERROR)
     {
@@ -369,10 +391,10 @@ int main(int argc, FAR char *argv[])
             devname = optarg;
             break;
           case 'f':
-            priv.foldname = optarg;
-            if (priv.foldname[strlen(priv.foldname)] == '/')
+            priv.filename = optarg;
+            if (priv.filename[strlen(priv.filename)] == '/')
               {
-                priv.foldname[strlen(priv.foldname)] = '\0';
+                priv.filename[strlen(priv.filename)] = '\0';
               }
 
             break;
@@ -399,6 +421,7 @@ int main(int argc, FAR char *argv[])
         }
     }
 
+#ifndef CONFIG_DISABLE_PTHREAD
   if (priv.buffersize && (priv.threshold > priv.buffersize ||
                           ctx.custom_size > priv.buffersize))
     {
@@ -413,6 +436,7 @@ int main(int argc, FAR char *argv[])
           return ret;
         }
     }
+#endif /* CONFIG_DISABLE_PTHREAD */
 
   ctx.packet_handler = handler;
   ctx.priv = &priv;
@@ -440,14 +464,27 @@ int main(int argc, FAR char *argv[])
     }
 
 out:
+#ifndef CONFIG_DISABLE_PTHREAD
   if (priv.buffersize)
     {
       async_uninit(&priv);
     }
+#endif /* CONFIG_DISABLE_PTHREAD */
 
   if (priv.fd > 0)
     {
       close(priv.fd);
+    }
+
+  /* file received from remote */
+
+  if (ret >= 0)
+    {
+      printf("\r\nSUCCESS: %d bytes received\n", ctx.file_length);
+    }
+  else
+    {
+      printf("\r\nFAILED: error (%d)!\n", ret);
     }
 
   return ret;

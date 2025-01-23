@@ -1,0 +1,3593 @@
+diff --git a/chipset/nuttx/btstack_chipset_nuttx.c b/chipset/nuttx/btstack_chipset_nuttx.c
+new file mode 100644
+index 000000000..4f1864738
+--- /dev/null
++++ b/chipset/nuttx/btstack_chipset_nuttx.c
+@@ -0,0 +1,83 @@
++/*
++ * Copyright (C) 2017 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#define BTSTACK_FILE__ "btstack_chipset_nuttx.c"
++
++/*
++ *  btstack_chipset_nuttx.c
++ *
++ *  Adapter to use CSR-based chipsets with BTstack
++ *  SCO over HCI doesn't work over H4 connection and BTM805 module from Microchip Bluetooth Audio Developer Kit (CSR8811)
++ */
++
++#include "btstack_chipset_nuttx.h"
++
++#include <stddef.h>   /* NULL */
++#include <stdio.h>
++#include <string.h>   /* memcpy */
++
++#include "btstack_control.h"
++#include "btstack_debug.h"
++#include "btstack_util.h"
++#include "hci_transport.h"
++
++static void chipset_init(const void * config)
++{
++    UNUSED(config);
++}
++
++static btstack_chipset_result_t chipset_next_command(uint8_t * hci_cmd_buffer)
++{
++    UNUSED(hci_cmd_buffer);
++
++    return BTSTACK_CHIPSET_DONE;
++}
++
++static const btstack_chipset_t btstack_chipset_nuttx =
++{
++    "NuttX",
++    chipset_init,
++    chipset_next_command,
++    NULL, // chipset_set_baudrate_command,
++    NULL, // chipset_set_bd_addr_command not supported or implemented
++};
++
++// MARK: public API
++const btstack_chipset_t * btstack_chipset_nuttx_instance(void)
++{
++    return &btstack_chipset_nuttx;
++}
+diff --git a/chipset/nuttx/btstack_chipset_nuttx.h b/chipset/nuttx/btstack_chipset_nuttx.h
+new file mode 100644
+index 000000000..0baac8e31
+--- /dev/null
++++ b/chipset/nuttx/btstack_chipset_nuttx.h
+@@ -0,0 +1,64 @@
++/*
++ * Copyright (C) 2017 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++/*
++ *  btstack_chipset_nuttx.h
++ *
++ *  Adapter to use NuttX-based Bluetooth Controllers with BTstack
++ */
++
++#ifndef BTSTACK_CHIPSET_NUTTX_H
++#define BTSTACK_CHIPSET_NUTTX_H
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++#include <stdint.h>
++#include "btstack_chipset.h"
++#include "bluetooth.h"
++
++/**
++ * Get chipset instance for NuttX Controllers
++ */
++const btstack_chipset_t * btstack_chipset_nuttx_instance(void);
++
++#if defined __cplusplus
++}
++#endif
++
++#endif // BTSTACK_CHIPSET_NUTTX_H
+diff --git a/platform/nuttx/btstack_link_key_db_fs.c b/platform/nuttx/btstack_link_key_db_fs.c
+new file mode 100644
+index 000000000..f9004a7c6
+--- /dev/null
++++ b/platform/nuttx/btstack_link_key_db_fs.c
+@@ -0,0 +1,256 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#ifdef ENABLE_CLASSIC
++
++#define BTSTACK_FILE__ "btstack_link_key_db_fs.c"
++
++#include <string.h>
++#include <stdlib.h>
++#include <stdio.h>
++#include <unistd.h>
++
++#include "tinydir.h"
++
++#include "btstack_config.h"
++#include "btstack_link_key_db_fs.h"
++#include "btstack_debug.h"
++#include "btstack_util.h"
++
++// allow to pre-set LINK_KEY_PATH from btstack_config.h
++#ifndef LINK_KEY_PATH
++#ifdef _WIN32
++#define LINK_KEY_PATH ""
++#else
++#define LINK_KEY_PATH "/tmp/"
++#endif
++#endif
++
++#define LINK_KEY_PREFIX "btstack_at_"
++#define LINK_KEY_FOR "_link_key_for_"
++#define LINK_KEY_SUFFIX ".txt"
++#define LINK_KEY_STRING_LEN 17
++
++static bd_addr_t local_addr;
++// note: sizeof for string literals works at compile time while strlen only works with some optimizations turned on. sizeof includes the  \0
++static char keypath[sizeof(LINK_KEY_PATH) + sizeof(LINK_KEY_PREFIX) + LINK_KEY_STRING_LEN + sizeof(LINK_KEY_FOR) + LINK_KEY_STRING_LEN + sizeof(LINK_KEY_SUFFIX) + 1];
++
++static char * bd_addr_to_dash_str(bd_addr_t addr){
++    return bd_addr_to_str_with_delimiter(addr, '-');
++}
++
++static char link_key_to_str_buffer[LINK_KEY_STR_LEN+1];  // 11223344556677889900112233445566\0
++static char *link_key_to_str(link_key_t link_key){
++    char * p = link_key_to_str_buffer;
++    int i;
++    for (i = 0; i < LINK_KEY_LEN ; i++) {
++        *p++ = char_for_nibble((link_key[i] >> 4) & 0x0F);
++        *p++ = char_for_nibble((link_key[i] >> 0) & 0x0F);
++    }
++    *p = 0;
++    return (char *) link_key_to_str_buffer;
++}
++
++static char link_key_type_to_str_buffer[2];
++static char *link_key_type_to_str(link_key_type_t link_key){
++    snprintf(link_key_type_to_str_buffer, sizeof(link_key_type_to_str_buffer), "%d", link_key);
++    return (char *) link_key_type_to_str_buffer;
++}
++
++static int sscanf_link_key(char * addr_string, link_key_t link_key){
++    unsigned int buffer[LINK_KEY_LEN];
++
++    // reset result buffer
++    memset(&buffer, 0, sizeof(buffer));
++
++    // parse
++    int result = sscanf( (char *) addr_string, "%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x%2x",
++                                    &buffer[0], &buffer[1], &buffer[2], &buffer[3],
++                                    &buffer[4], &buffer[5], &buffer[6], &buffer[7],
++                                    &buffer[8], &buffer[9], &buffer[10], &buffer[11],
++                                    &buffer[12], &buffer[13], &buffer[14], &buffer[15] );
++
++    if (result != LINK_KEY_LEN) return 0;
++
++    // store
++    int i;
++    uint8_t *p = (uint8_t *) link_key;
++    for (i=0; i<LINK_KEY_LEN; i++ ) {
++        *p++ = (uint8_t) buffer[i];
++    }
++    return 1;
++}
++
++static void set_path(bd_addr_t bd_addr){
++    strcpy(keypath, LINK_KEY_PATH);
++    strcat(keypath, LINK_KEY_PREFIX);
++    strcat(keypath, bd_addr_to_dash_str(local_addr));
++    strcat(keypath, LINK_KEY_FOR);
++    strcat(keypath, bd_addr_to_dash_str(bd_addr));
++    strcat(keypath, LINK_KEY_SUFFIX);
++}
++
++// Device info
++static void db_open(void){
++}
++
++static void db_set_local_bd_addr(bd_addr_t bd_addr){
++    memcpy(local_addr, bd_addr, 6);
++}
++
++static void db_close(void){
++}
++
++static void put_link_key(bd_addr_t bd_addr, link_key_t link_key, link_key_type_t link_key_type){
++    set_path(bd_addr);
++    char * link_key_str = link_key_to_str(link_key);
++    char * link_key_type_str = link_key_type_to_str(link_key_type);
++
++    FILE * wFile = fopen(keypath,"w+");
++    if (wFile == NULL){
++        log_error("failed to create file");
++        return;
++    }
++    fwrite(link_key_str, strlen(link_key_str), 1, wFile);
++    fwrite(link_key_type_str, strlen(link_key_type_str), 1, wFile);
++    fclose(wFile);
++}
++
++static int read_link_key(const char * path, link_key_t link_key, link_key_type_t * link_key_type){
++    if (access(path, R_OK)) return 0;
++
++    char link_key_str[LINK_KEY_STR_LEN + 1];
++    char link_key_type_str[2];
++
++    FILE * rFile = fopen(path,"r+");
++    if (rFile == NULL) return 0;
++    size_t objects_read = fread(link_key_str, LINK_KEY_STR_LEN, 1, rFile );
++    if (objects_read == 1){
++        link_key_str[LINK_KEY_STR_LEN] = 0;
++        log_info("Found link key %s\n", link_key_str);
++        objects_read = fread(link_key_type_str, 1, 1, rFile );
++    }
++    fclose(rFile);
++
++    if (objects_read != 1) return 0;
++    link_key_type_str[1] = 0;
++    log_info("Found link key type %s\n", link_key_type_str);
++
++    int scan_result = sscanf_link_key(link_key_str, link_key);
++    if (scan_result == 0 ) return 0;
++
++    int link_key_type_buffer;
++    scan_result = sscanf( (char *) link_key_type_str, "%d", &link_key_type_buffer);
++    if (scan_result == 0 ) return 0;
++    *link_key_type = (link_key_type_t) link_key_type_buffer;
++    return 1;
++}
++
++static int get_link_key(bd_addr_t bd_addr, link_key_t link_key, link_key_type_t * link_key_type) {
++    set_path(bd_addr);
++    return read_link_key(keypath, link_key, link_key_type);
++}
++
++static void delete_link_key(bd_addr_t bd_addr){
++    set_path(bd_addr);
++    if (access(keypath, R_OK)) return;
++    if(remove(keypath) != 0){
++        log_error("File %s could not be deleted.\n", keypath);
++    }
++}
++
++static int iterator_init(btstack_link_key_iterator_t * it){
++    tinydir_dir * dir = (tinydir_dir *) malloc(sizeof(tinydir_dir));
++    if (!dir) return 0;
++    it->context = dir;
++    tinydir_open(dir, LINK_KEY_PATH);
++    return 1;
++}
++
++static int  iterator_get_next(btstack_link_key_iterator_t * it, bd_addr_t bd_addr, link_key_t link_key, link_key_type_t * type){
++    (void)bd_addr;
++    (void)link_key;
++    UNUSED(type);
++    tinydir_dir * dir = (tinydir_dir*) it->context;
++
++    // construct prefix
++    strcpy(keypath, LINK_KEY_PREFIX);
++    strcat(keypath, bd_addr_to_dash_str(local_addr));
++    strcat(keypath, LINK_KEY_FOR);
++
++    while (dir->has_next) {
++        tinydir_file file;
++        tinydir_readfile(dir, &file);
++        tinydir_next(dir);
++        // compare
++        if (strncmp(keypath, file.name, strlen(keypath)) == 0){
++            // parse bd_addr
++            const int addr_offset = sizeof(LINK_KEY_PREFIX) + LINK_KEY_STRING_LEN + sizeof(LINK_KEY_FOR) - 2;   // -1 for each sizeof
++            sscanf_bd_addr(&file.name[addr_offset], bd_addr);
++            // path found, read file
++            strcpy(keypath, LINK_KEY_PATH);
++            strcat(keypath, file.name);
++            read_link_key(keypath, link_key, type);
++            return 1;
++        }
++    }
++    return 0;
++}
++
++static void iterator_done(btstack_link_key_iterator_t * it){
++    tinydir_close((tinydir_dir*)it->context);
++    free(it->context);
++    it->context = NULL;
++}
++
++static const btstack_link_key_db_t btstack_link_key_db_fs = {
++    &db_open,
++    &db_set_local_bd_addr,
++    &db_close,
++    &get_link_key,
++    &put_link_key,
++    &delete_link_key,
++    &iterator_init,
++    &iterator_get_next,
++    &iterator_done,
++};
++
++const btstack_link_key_db_t * btstack_link_key_db_fs_instance(void){
++    return &btstack_link_key_db_fs;
++}
++
++#endif /* ENABLE_CLASSIC */
+diff --git a/platform/nuttx/btstack_link_key_db_fs.h b/platform/nuttx/btstack_link_key_db_fs.h
+new file mode 100644
+index 000000000..36f68062c
+--- /dev/null
++++ b/platform/nuttx/btstack_link_key_db_fs.h
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#ifndef BTSTACK_LINK_KEY_DB_FS_H
++#define BTSTACK_LINK_KEY_DB_FS_H
++
++#ifdef ENABLE_CLASSIC
++
++#include "classic/btstack_link_key_db.h"
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++/*
++ * @brief Get basic link key db implementation that stores link keys in /tmp
++ */
++const btstack_link_key_db_t * btstack_link_key_db_fs_instance(void);
++
++/* API_END */
++
++#if defined __cplusplus
++}
++#endif
++
++#endif /* ENABLE_CLASSIC */
++
++#endif // BTSTACK_LINK_KEY_DB_FS_H
+diff --git a/platform/nuttx/btstack_network_nuttx.c b/platform/nuttx/btstack_network_nuttx.c
+new file mode 100644
+index 000000000..46ae62e92
+--- /dev/null
++++ b/platform/nuttx/btstack_network_nuttx.c
+@@ -0,0 +1,276 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#ifdef CONFIG_NET_BLUETOOTH
++
++#define BTSTACK_FILE__ "btstack_network_nuttx.c"
++
++/*
++ * btstack_network.c
++ * Implementation of the btstack_network.h interface for NUTTX systems
++ */
++
++
++#include "btstack_network.h"
++
++#include "btstack_config.h"
++#include "btstack_debug.h"
++#include "btstack_run_loop.h"
++
++#include <sys/types.h>
++#include <sys/socket.h>
++#include <sys/time.h>
++#include <sys/ioctl.h>
++#include <sys/param.h>
++#include <sys/stat.h>
++
++#include <arpa/inet.h>
++#include <errno.h>
++#include <fcntl.h>
++#include <ifaddrs.h>
++#include <net/if_arp.h>
++#include <stdint.h>
++#include <stdio.h>
++#include <stdlib.h>
++#include <string.h>
++#include <unistd.h>
++
++#include <nuttx/net/tun.h>
++
++static int  tap_fd = -1;
++static uint8_t network_buffer[BNEP_MTU_MIN];
++static size_t  network_buffer_len = 0;
++static char tap_dev_name[16];
++
++// Nuttx uses single control device to bring up tunX or tapX interface
++static const char * tap_dev = "/dev/net/tun";
++static const char * tap_dev_name_template =  "bnep%d";
++
++static btstack_data_source_t tap_dev_ds;
++
++static void (*btstack_network_send_packet_callback)(const uint8_t * packet, uint16_t size);
++
++/*
++ * @text Listing processTapData shows how a packet is received from the TAP network interface
++ * and forwarded over the BNEP connection.
++ *
++ * After successfully reading a network packet, the call to
++ * the *bnep_can_send_packet_now* function checks, if BTstack can forward
++ * a network packet now. If that's not possible, the received data stays
++ * in the network buffer and the data source elements is removed from the
++ * run loop. The *process_tap_dev_data* function will not be called until
++ * the data source is registered again. This provides a basic flow control.
++ */
++
++/* LISTING_START(processTapData): Process incoming network packets */
++static void process_tap_dev_data(btstack_data_source_t *ds, btstack_data_source_callback_type_t callback_type)
++{
++    UNUSED(ds);
++    UNUSED(callback_type);
++
++    ssize_t len;
++    len = read(ds->source.fd, network_buffer, sizeof(network_buffer));
++    if (len <= 0){
++        fprintf(stderr, "TAP: Error while reading: %s\n", strerror(errno));
++        return;
++    }
++
++    network_buffer_len = len;
++
++    // disable reading from netif
++    btstack_run_loop_disable_data_source_callbacks(&tap_dev_ds, DATA_SOURCE_CALLBACK_READ);
++
++    // let client now
++    (*btstack_network_send_packet_callback)(network_buffer, network_buffer_len);
++}
++
++/**
++ * @brief Initialize network interface
++ * @param send_packet_callback
++ */
++void btstack_network_init(void (*send_packet_callback)(const uint8_t * packet, uint16_t size)){
++    btstack_network_send_packet_callback = send_packet_callback;
++}
++
++/**
++ * @text This code requries a TUN/TAP interface to connect the Bluetooth network interface
++ * with the native system. It has been tested on Linux and OS X, but should work on any
++ * system that provides TUN/TAP with minor modifications.
++ *
++ * On Linux, TUN/TAP is available by default. On OS X, tuntaposx from
++ * http://tuntaposx.sourceforge.net needs to be installed.
++ *
++ * The *tap_alloc* function sets up a virtual network interface with the given Bluetooth Address.
++ * It is rather low-level as it sets up and configures a network interface.
++ *
++ * @brief Bring up network interfacd
++ * @param network_address
++ * @return 0 if ok
++ */
++int btstack_network_up(bd_addr_t network_address){
++
++    struct ifreq ifr;
++    int fd_dev;
++    int fd_socket;
++
++    if( (fd_dev = open(tap_dev, O_RDWR)) < 0 ) {
++        fprintf(stderr, "TAP: Error opening %s: %s\n", tap_dev, strerror(errno));
++        return -1;
++    }
++
++    memset(&ifr, 0, sizeof(ifr));
++    ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
++    strncpy(ifr.ifr_name, tap_dev_name_template, IFNAMSIZ);  // device name pattern
++
++    int err;
++    if( (err = ioctl(fd_dev, TUNSETIFF, (void *) &ifr)) < 0 ) {
++        fprintf(stderr, "TAP: Error setting device name: %s\n", strerror(errno));
++        close(fd_dev);
++        return -1;
++    }
++    strcpy(tap_dev_name, ifr.ifr_name);
++
++    fd_socket = socket(PF_INET, SOCK_DGRAM, IPPROTO_IP);
++    if (fd_socket < 0) {
++        close(fd_dev);
++        fprintf(stderr, "TAP: Error opening netlink socket: %s\n", strerror(errno));
++        return -1;
++    }
++
++    // Configure the MAC address of the newly created bnep(x)
++    // device to the local bd_address
++    memset (&ifr, 0, sizeof(struct ifreq));
++    strcpy(ifr.ifr_name, tap_dev_name);
++
++    ifr.ifr_hwaddr.sa_family = ARPHRD_ETHER;
++    memcpy(ifr.ifr_hwaddr.sa_data, network_address, sizeof(bd_addr_t));
++    if (ioctl(fd_socket, SIOCSIFHWADDR, &ifr) == -1) {
++        close(fd_dev);
++        close(fd_socket);
++        fprintf(stderr, "TAP: Error setting hw addr: %s\n", strerror(errno));
++        exit(1);
++        return -1;
++    }
++
++    // Bring the interface up
++    if (ioctl(fd_socket, SIOCGIFFLAGS, &ifr) == -1) {
++        close(fd_dev);
++        close(fd_socket);
++        fprintf(stderr, "TAP: Error reading interface flags: %s\n", strerror(errno));
++        return -1;
++    }
++
++    if ((ifr.ifr_flags & IFF_UP) == 0) {
++        ifr.ifr_flags |= IFF_UP;
++
++        if (ioctl(fd_socket, SIOCSIFFLAGS, &ifr) == -1) {
++            close(fd_dev);
++            close(fd_socket);
++            fprintf(stderr, "TAP: Error set IFF_UP: %s\n", strerror(errno));
++            return -1;
++        }
++    }
++
++    close(fd_socket);
++
++    tap_fd = fd_dev;
++    log_info("BNEP device \"%s\" allocated", tap_dev_name);
++
++    /* Create and register a new runloop data source */
++    btstack_run_loop_set_data_source_fd(&tap_dev_ds, tap_fd);
++    btstack_run_loop_set_data_source_handler(&tap_dev_ds, &process_tap_dev_data);
++    btstack_run_loop_add_data_source(&tap_dev_ds);
++    btstack_run_loop_enable_data_source_callbacks(&tap_dev_ds, DATA_SOURCE_CALLBACK_READ);
++
++    return 0;
++}
++
++/**
++ * @brief Get network name after network was activated
++ * @note e.g. tapX on Linux, might not be useful on all platforms
++ * @returns network name
++ */
++const char * btstack_network_get_name(void){
++    return tap_dev_name;
++}
++
++/**
++ * @brief Bring up network interface
++ * @param network_address
++ * @return 0 if ok
++ */
++int btstack_network_down(void){
++    log_info("BNEP channel closed");
++    btstack_run_loop_remove_data_source(&tap_dev_ds);
++    if (tap_fd >= 0){
++        close(tap_fd);
++    }
++    tap_fd = -1;
++    return 0;
++}
++
++/**
++ * @brief Receive packet on network interface, e.g., forward packet to TCP/IP stack
++ * @param packet
++ * @param size
++ */
++void btstack_network_process_packet(const uint8_t * packet, uint16_t size){
++
++    if (tap_fd < 0) return;
++    // Write out the ethernet frame to the tap device
++
++    int rc = write(tap_fd, packet, size);
++    if (rc < 0) {
++        log_error("TAP: Could not write to TAP device: %s", strerror(errno));
++    } else
++    if (rc != size) {
++        log_error("TAP: Package written only partially %d of %d bytes", rc, size);
++    }
++}
++
++/**
++ * @brief Notify network interface that packet from send_packet_callback was sent and the next packet can be delivered.
++ */
++void btstack_network_packet_sent(void){
++
++    network_buffer_len = 0;
++
++    // Re-enable the tap device data source
++    btstack_run_loop_enable_data_source_callbacks(&tap_dev_ds, DATA_SOURCE_CALLBACK_READ);
++}
++
++#endif /* CONFIG_NET_BLUETOOTH */
+diff --git a/platform/nuttx/btstack_run_loop_nuttx.c b/platform/nuttx/btstack_run_loop_nuttx.c
+new file mode 100644
+index 000000000..4e1d26813
+--- /dev/null
++++ b/platform/nuttx/btstack_run_loop_nuttx.c
+@@ -0,0 +1,362 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#define BTSTACK_FILE__ "btstack_run_loop_nuttx.c"
++
++/*
++ *  btstack_run_loop.c
++ *
++ *  Created by Matthias Ringwald on 6/6/09.
++ */
++
++
++#include "btstack_run_loop_nuttx.h"
++
++#include "btstack_run_loop.h"
++#include "btstack_util.h"
++#include "btstack_linked_list.h"
++#include "btstack_debug.h"
++
++#include <stdio.h>
++#include <stdlib.h>
++#include <sys/errno.h>
++#include <sys/select.h>
++#include <sys/time.h>
++#include <time.h>
++#include <unistd.h>
++#include <pthread.h>
++
++// the run loop
++static int btstack_run_loop_nuttx_data_sources_modified;
++
++static bool btstack_run_loop_nuttx_exit_requested;
++
++// to trigger process callbacks other thread
++static pthread_mutex_t       btstack_run_loop_nuttx_callbacks_mutex = PTHREAD_MUTEX_INITIALIZER;
++static int                   btstack_run_loop_nuttx_process_callbacks_fd;
++static btstack_data_source_t btstack_run_loop_nuttx_process_callbacks_ds;
++
++// to trigger poll data sources from irq
++static int                   btstack_run_loop_nuttx_poll_data_sources_fd;
++static btstack_data_source_t btstack_run_loop_nuttx_poll_data_sources_ds;
++
++// start time. tv_usec/tv_nsec = 0
++#ifdef CONFIG_BTSTACK_MONOTONIC_CLOCK
++// use monotonic clock if available
++static struct timespec init_ts;
++#else
++// fallback to gettimeofday
++static struct timeval init_tv;
++#endif
++
++/**
++ * Add data_source to run_loop
++ */
++static void btstack_run_loop_nuttx_add_data_source(btstack_data_source_t *ds){
++    btstack_run_loop_nuttx_data_sources_modified = 1;
++    btstack_run_loop_base_add_data_source(ds);
++}
++
++/**
++ * Remove data_source from run loop
++ */
++static bool btstack_run_loop_nuttx_remove_data_source(btstack_data_source_t *ds){
++    btstack_run_loop_nuttx_data_sources_modified = 1;
++    return btstack_run_loop_base_remove_data_source(ds);
++}
++
++#ifdef CONFIG_BTSTACK_MONOTONIC_CLOCK
++/**
++ * @brief Returns the timespec which represents the time(stop - start). It might be negative
++ */
++static void timespec_diff(struct timespec *start, struct timespec *stop, struct timespec *result){
++    result->tv_sec = stop->tv_sec - start->tv_sec;
++    if ((stop->tv_nsec - start->tv_nsec) < 0) {
++        result->tv_sec = stop->tv_sec - start->tv_sec - 1;
++        result->tv_nsec = stop->tv_nsec - start->tv_nsec + 1000000000;
++    } else {
++        result->tv_sec = stop->tv_sec - start->tv_sec;
++        result->tv_nsec = stop->tv_nsec - start->tv_nsec;
++    }
++}
++
++/**
++ * @brief Convert timespec to miliseconds, might overflow
++ */
++static uint64_t timespec_to_milliseconds(struct timespec *a){
++    uint64_t ret = 0;
++    uint64_t sec_val = (uint64_t)(a->tv_sec);
++    uint64_t nsec_val = (uint64_t)(a->tv_nsec);
++    ret = (sec_val*1000) + (nsec_val/1000000);
++    return ret;
++}
++
++/**
++ * @brief Returns the milisecond value of (stop - start). Might overflow
++ */
++static uint64_t timespec_diff_milis(struct timespec* start, struct timespec* stop){
++    struct timespec diff_ts;
++    timespec_diff(start, stop, &diff_ts);
++    return timespec_to_milliseconds(&diff_ts);
++}
++#endif
++
++/**
++ * @brief Queries the current time in ms since start
++ */
++static uint32_t btstack_run_loop_nuttx_get_time_ms(void){
++    uint32_t time_ms;
++#ifdef CONFIG_BTSTACK_MONOTONIC_CLOCK
++    struct timespec now_ts;
++    clock_gettime(CLOCK_MONOTONIC, &now_ts);
++    time_ms = (uint32_t) timespec_diff_milis(&init_ts, &now_ts);
++#else
++    struct timeval tv;
++    gettimeofday(&tv, NULL);
++    time_ms = (uint32_t) ((tv.tv_sec  - init_tv.tv_sec) * 1000) + (tv.tv_usec / 1000);
++#endif
++    return time_ms;
++}
++
++/**
++ * Execute run_loop
++ */
++static void btstack_run_loop_nuttx_execute(void) {
++    fd_set descriptors_read;
++    fd_set descriptors_write;
++
++    btstack_linked_list_iterator_t it;
++    struct timeval * timeout;
++    struct timeval tv;
++    uint32_t now_ms;
++
++#ifdef CONFIG_BTSTACK_MONOTONIC_CLOCK
++    log_info("POSIX run loop with monotonic clock");
++#else
++    log_info("POSIX run loop using ettimeofday fallback.");
++#endif
++
++    while (btstack_run_loop_nuttx_exit_requested == false) {
++        // collect FDs
++        FD_ZERO(&descriptors_read);
++        FD_ZERO(&descriptors_write);
++        int highest_fd = -1;
++        btstack_linked_list_iterator_init(&it, &btstack_run_loop_base_data_sources);
++        while (btstack_linked_list_iterator_has_next(&it)){
++            btstack_data_source_t *ds = (btstack_data_source_t*) btstack_linked_list_iterator_next(&it);
++            if (ds->source.fd < 0) continue;
++            if (ds->flags & DATA_SOURCE_CALLBACK_READ){
++                FD_SET(ds->source.fd, &descriptors_read);
++                if (ds->source.fd > highest_fd) {
++                    highest_fd = ds->source.fd;
++                }
++                log_debug("btstack_run_loop_execute adding fd %u for read", ds->source.fd);
++            }
++            if (ds->flags & DATA_SOURCE_CALLBACK_WRITE){
++                FD_SET(ds->source.fd, &descriptors_write);
++                if (ds->source.fd > highest_fd) {
++                    highest_fd = ds->source.fd;
++                }
++                log_debug("btstack_run_loop_execute adding fd %u for write", ds->source.fd);
++            }
++        }
++
++        // get next timeout
++        timeout = NULL;
++        now_ms = btstack_run_loop_nuttx_get_time_ms();
++        int32_t delta_ms = btstack_run_loop_base_get_time_until_timeout(now_ms);
++        if (delta_ms >= 0) {
++            timeout = &tv;
++            tv.tv_sec  = delta_ms / 1000;
++            tv.tv_usec = (int) (delta_ms - (tv.tv_sec * 1000)) * 1000;
++            log_debug("btstack_run_loop_execute next timeout in %u ms", delta_ms);
++        }
++
++        // wait for ready FDs
++        int res = select( highest_fd+1 , &descriptors_read, &descriptors_write, NULL, timeout);
++        if (res < 0){
++            log_error("btstack_run_loop_nuttx_execute: select -> errno %u", errno);
++        }
++        if (res > 0){
++            btstack_run_loop_nuttx_data_sources_modified = 0;
++            btstack_linked_list_iterator_init(&it, &btstack_run_loop_base_data_sources);
++            while (btstack_linked_list_iterator_has_next(&it) && !btstack_run_loop_nuttx_data_sources_modified){
++                btstack_data_source_t *ds = (btstack_data_source_t*) btstack_linked_list_iterator_next(&it);
++                log_debug("btstack_run_loop_nuttx_execute: check ds %p with fd %u\n", ds, ds->source.fd);
++                if (FD_ISSET(ds->source.fd, &descriptors_read)) {
++                    log_debug("btstack_run_loop_nuttx_execute: process read ds %p with fd %u\n", ds, ds->source.fd);
++                    ds->process(ds, DATA_SOURCE_CALLBACK_READ);
++                }
++                if (btstack_run_loop_nuttx_data_sources_modified) break;
++                if (FD_ISSET(ds->source.fd, &descriptors_write)) {
++                    log_debug("btstack_run_loop_nuttx_execute: process write ds %p with fd %u\n", ds, ds->source.fd);
++                    ds->process(ds, DATA_SOURCE_CALLBACK_WRITE);
++                }
++            }
++        }
++        log_debug("btstack_run_loop_nuttx_execute: after ds check\n");
++
++        // process timers
++        now_ms = btstack_run_loop_nuttx_get_time_ms();
++        btstack_run_loop_base_process_timers(now_ms);
++    }
++}
++
++static void btstack_run_loop_nuttx_trigger_exit(void){
++    btstack_run_loop_nuttx_exit_requested = true;
++}
++
++// set timer
++static void btstack_run_loop_nuttx_set_timer(btstack_timer_source_t *a, uint32_t timeout_in_ms){
++    uint32_t time_ms = btstack_run_loop_nuttx_get_time_ms();
++    a->timeout = time_ms + timeout_in_ms;
++    log_debug("btstack_run_loop_nuttx_set_timer to %u ms (now %u, timeout %u)", a->timeout, time_ms, timeout_in_ms);
++}
++
++// trigger pipe
++static void btstack_run_loop_nuttx_trigger_pipe(int fd){
++    if (fd < 0) return;
++    const uint8_t x = (uint8_t) 'x';
++    ssize_t bytes_written = write(fd, &x, 1);
++    UNUSED(bytes_written);
++}
++
++// poll data sources from irq
++
++static void btstack_run_loop_nuttx_poll_data_sources_handler(btstack_data_source_t * ds, btstack_data_source_callback_type_t callback_type){
++    UNUSED(callback_type);
++    uint8_t buffer[1];
++    ssize_t bytes_read = read(ds->source.fd, buffer, 1);
++    UNUSED(bytes_read);
++    // poll data sources
++    btstack_run_loop_base_poll_data_sources();
++}
++
++static void btstack_run_loop_nuttx_poll_data_sources_from_irq(void){
++    // trigger run loop
++    btstack_run_loop_nuttx_trigger_pipe(btstack_run_loop_nuttx_poll_data_sources_fd);
++}
++
++// execute on main thread from same or different thread
++
++static void btstack_run_loop_nuttx_process_callbacks_handler(btstack_data_source_t * ds, btstack_data_source_callback_type_t callback_type){
++    UNUSED(callback_type);
++    uint8_t buffer[1];
++    ssize_t bytes_read = read(ds->source.fd, buffer, 1);
++    UNUSED(bytes_read);
++    // execute callbacks - protect list with mutex
++    while (1){
++        pthread_mutex_lock(&btstack_run_loop_nuttx_callbacks_mutex);
++        btstack_context_callback_registration_t * callback_registration = (btstack_context_callback_registration_t *) btstack_linked_list_pop(&btstack_run_loop_base_callbacks);
++        pthread_mutex_unlock(&btstack_run_loop_nuttx_callbacks_mutex);
++        if (callback_registration == NULL){
++            break;
++        }
++        (*callback_registration->callback)(callback_registration->context);
++    }
++}
++
++static void btstack_run_loop_nuttx_execute_on_main_thread(btstack_context_callback_registration_t * callback_registration){
++    // protect list with mutex
++    pthread_mutex_lock(&btstack_run_loop_nuttx_callbacks_mutex);
++    btstack_run_loop_base_add_callback(callback_registration);
++    pthread_mutex_unlock(&btstack_run_loop_nuttx_callbacks_mutex);
++    // trigger run loop
++    btstack_run_loop_nuttx_trigger_pipe(btstack_run_loop_nuttx_process_callbacks_fd);
++}
++
++//init
++
++// @return fd >= 0 on success
++static int btstack_run_loop_nuttx_register_pipe_datasource(btstack_data_source_t * data_source){
++    int fildes[2]; // 0 = read,  1 = write
++    int status = pipe(fildes);
++    if (status != 0){
++        log_error("pipe() failed");
++        return -1;
++    }
++    data_source->source.fd = fildes[0];
++    data_source->flags = DATA_SOURCE_CALLBACK_READ;
++    btstack_run_loop_base_add_data_source(data_source);
++    log_info("Pipe: in %u, out %u", fildes[1], fildes[0]);
++    return fildes[1];
++}
++
++static void btstack_run_loop_nuttx_init(void){
++    btstack_run_loop_base_init();
++
++#ifdef CONFIG_BTSTACK_MONOTONIC_CLOCK
++    clock_gettime(CLOCK_MONOTONIC, &init_ts);
++    init_ts.tv_nsec = 0;
++#else
++    // just assume that we started at tv_usec == 0
++    gettimeofday(&init_tv, NULL);
++    init_tv.tv_usec = 0;
++#endif
++
++    // setup pipe to trigger process callbacks
++    btstack_run_loop_nuttx_process_callbacks_ds.process = &btstack_run_loop_nuttx_process_callbacks_handler;
++    btstack_run_loop_nuttx_process_callbacks_fd = btstack_run_loop_nuttx_register_pipe_datasource(&btstack_run_loop_nuttx_process_callbacks_ds);
++
++    // setup pipe to poll data sources
++    btstack_run_loop_nuttx_poll_data_sources_ds.process = &btstack_run_loop_nuttx_poll_data_sources_handler;
++    btstack_run_loop_nuttx_poll_data_sources_fd = btstack_run_loop_nuttx_register_pipe_datasource(&btstack_run_loop_nuttx_poll_data_sources_ds);
++}
++
++static const btstack_run_loop_t btstack_run_loop_nuttx = {
++    &btstack_run_loop_nuttx_init,
++    &btstack_run_loop_nuttx_add_data_source,
++    &btstack_run_loop_nuttx_remove_data_source,
++    &btstack_run_loop_base_enable_data_source_callbacks,
++    &btstack_run_loop_base_disable_data_source_callbacks,
++    &btstack_run_loop_nuttx_set_timer,
++    &btstack_run_loop_base_add_timer,
++    &btstack_run_loop_base_remove_timer,
++    &btstack_run_loop_nuttx_execute,
++    &btstack_run_loop_base_dump_timer,
++    &btstack_run_loop_nuttx_get_time_ms,
++    &btstack_run_loop_nuttx_poll_data_sources_from_irq,
++    &btstack_run_loop_nuttx_execute_on_main_thread,
++    &btstack_run_loop_nuttx_trigger_exit,
++};
++
++/**
++ * Provide btstack_run_loop_nuttx instance
++ */
++const btstack_run_loop_t * btstack_run_loop_nuttx_get_instance(void){
++    return &btstack_run_loop_nuttx;
++}
+diff --git a/platform/nuttx/btstack_run_loop_nuttx.h b/platform/nuttx/btstack_run_loop_nuttx.h
+new file mode 100644
+index 000000000..c92372b9c
+--- /dev/null
++++ b/platform/nuttx/btstack_run_loop_nuttx.h
+@@ -0,0 +1,63 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++/*
++ *  btstack_run_loop_nuttx.h
++ *  Functionality special to the NUTTX run loop
++ */
++
++#ifndef btstack_run_loop_NUTTX_H
++#define btstack_run_loop_NUTTX_H
++
++#include "btstack_run_loop.h"
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++/**
++ * Provide btstack_run_loop_nuttx instance
++ */
++const btstack_run_loop_t * btstack_run_loop_nuttx_get_instance(void);
++
++/* API_END */
++
++#if defined __cplusplus
++}
++#endif
++
++#endif // btstack_run_loop_NUTTX_H
+diff --git a/platform/nuttx/btstack_signal.c b/platform/nuttx/btstack_signal.c
+new file mode 100644
+index 000000000..cd209e94c
+--- /dev/null
++++ b/platform/nuttx/btstack_signal.c
+@@ -0,0 +1,84 @@
++/*
++ * Copyright (C) 2021 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#define BTSTACK_FILE__ "btstack_signal.c"
++
++#include "btstack_signal.h"
++
++#include <pthread.h>
++#include <signal.h>
++#include <string.h>
++
++#include "btstack_run_loop.h"
++
++static void signal_callback(void * arg){
++    void (*callback)(void) = (void (*)(void)) arg;
++    (*callback)();
++}
++
++static void * signal_thread(void *arg) {
++    // prepare registration
++    btstack_context_callback_registration_t registration;
++    memset(&registration, 0, sizeof(btstack_context_callback_registration_t));
++    registration.callback = &signal_callback;
++    registration.context  = arg;
++
++    while (1){
++        // wait for signal
++        sigset_t sigset;
++        sigemptyset(&sigset);
++        sigaddset(&sigset, SIGINT);
++        int sig = 0;
++        (void) sigwait(&sigset, &sig);
++
++        // execute callback on main thread
++        btstack_run_loop_execute_on_main_thread(&registration);
++    }
++    return NULL;
++}
++
++void btstack_signal_register_callback(int signal, void (*callback)(void)) {
++    // block signal
++    sigset_t base_mask;
++    sigemptyset (&base_mask);
++    sigaddset (&base_mask, signal);
++    sigprocmask (SIG_SETMASK, &base_mask, NULL);
++
++    // start thread to receive signal
++    pthread_t thread;
++    pthread_create(&thread, NULL, signal_thread, (void*) callback);
++}
+diff --git a/platform/nuttx/btstack_signal.h b/platform/nuttx/btstack_signal.h
+new file mode 100644
+index 000000000..241bd410a
+--- /dev/null
++++ b/platform/nuttx/btstack_signal.h
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2021 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++/*
++ *  Support for handling NUTTX signals
++ */
++
++#ifndef BTSTACK_SIGNAL_H
++#define BTSTACK_SIGNAL_H
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++/* API_START */
++
++/**
++ * Register callback for signal
++ */
++void btstack_signal_register_callback(int signal, void (*callback)(void));
++
++/* API_END */
++
++#if defined __cplusplus
++}
++#endif
++
++#endif //BTSTACK_SIGNAL_H
+diff --git a/platform/nuttx/btstack_stdin_nuttx.c b/platform/nuttx/btstack_stdin_nuttx.c
+new file mode 100644
+index 000000000..68a10074a
+--- /dev/null
++++ b/platform/nuttx/btstack_stdin_nuttx.c
+@@ -0,0 +1,115 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#ifdef HAVE_BTSTACK_STDIN
++
++#define BTSTACK_FILE__ "btstack_stdin_nuttx.c"
++
++#include <stdio.h>
++#include <unistd.h>
++
++#include "btstack_debug.h"
++#include "btstack_run_loop.h"
++
++#include "btstack_stdin.h"
++#include <termios.h>
++
++static btstack_data_source_t stdin_source;
++static int activated = 0;
++static void (*stdin_handler)(char c);
++
++// read single byte after data source callback was triggered
++static void stdin_process(btstack_data_source_t *ds, btstack_data_source_callback_type_t callback_type){
++    UNUSED(ds);
++    UNUSED(callback_type);
++
++    char data;
++    int result = read(stdin_source.source.fd, &data, 1);
++    if (result < 1) return;
++    if (stdin_handler == NULL) return;
++
++#ifdef ENABLE_BTSTACK_STDIN_LOGGING
++    log_info("stdin: %c", data);
++#endif
++
++    (*stdin_handler)(data);
++}
++
++void btstack_stdin_setup(void (*handler)(char c)){
++
++    if (activated) return;
++
++    // disable line buffering
++    struct termios term = {0};
++    if (tcgetattr(0, &term) < 0)
++            perror("tcsetattr()");
++    term.c_lflag &= ~ICANON;
++    term.c_lflag &= ~ECHO;
++    if (tcsetattr(0, TCSANOW, &term) < 0) {
++        perror("tcsetattr ICANON");
++    }
++
++    stdin_handler = handler;
++
++    btstack_run_loop_set_data_source_fd(&stdin_source, 0); // stdin
++
++    btstack_run_loop_enable_data_source_callbacks(&stdin_source, DATA_SOURCE_CALLBACK_READ);
++    btstack_run_loop_set_data_source_handler(&stdin_source, stdin_process);
++    btstack_run_loop_add_data_source(&stdin_source);
++
++    activated = 1;
++}
++
++void btstack_stdin_reset(void){
++    if (!activated) return;
++    activated = 0;
++    stdin_handler = NULL;
++
++    btstack_run_loop_remove_data_source(&stdin_source);
++
++    struct termios term = {0};
++    if (tcgetattr(0, &term) < 0){
++        perror("tcsetattr()");
++    }
++    term.c_lflag |= ICANON;
++    term.c_lflag |= ECHO;
++    if (tcsetattr(0, TCSANOW, &term) < 0){
++        perror("tcsetattr ICANON");
++    }
++}
++
++#endif /* HAVE_BTSTACK_STDIN */
+diff --git a/platform/nuttx/btstack_tlv_nuttx.c b/platform/nuttx/btstack_tlv_nuttx.c
+new file mode 100644
+index 000000000..4ff739b90
+--- /dev/null
++++ b/platform/nuttx/btstack_tlv_nuttx.c
+@@ -0,0 +1,308 @@
++/*
++ * Copyright (C) 2017 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ */
++
++#define BTSTACK_FILE__ "btstack_tlv_nuttx.c"
++
++#include "btstack_tlv.h"
++#include "btstack_tlv_nuttx.h"
++#include "btstack_debug.h"
++#include "btstack_util.h"
++#include "btstack_debug.h"
++#include "string.h"
++
++#include <stdlib.h>
++#include <string.h>
++
++
++// Header:
++// - Magic: 'BTstack'
++// - Status:
++//   - bits 765432: reserved
++//	 - bits 10:     epoch
++
++// Entries
++// - Tag: 32 bit
++// - Len: 32 bit
++// - Value: Len in bytes
++
++#define BTSTACK_TLV_HEADER_LEN 8
++
++#define MAX_TLV_VALUE_SIZE 2048
++
++static const char * btstack_tlv_header_magic = "BTstack";
++
++#define DUMMY_SIZE 4
++typedef struct tlv_entry {
++	void   * next;
++	uint32_t tag;
++	uint32_t len;
++	uint8_t  value[DUMMY_SIZE];	// dummy size
++} tlv_entry_t;
++
++// testing support
++static bool btstack_tlv_nuttx_read_only = false;
++
++static void btstack_tlv_nuttx_append_tag(btstack_tlv_nuttx_t * self, uint32_t tag, const uint8_t * data, uint32_t data_size){
++
++	if (!self->file) return;
++
++	log_info("append tag %04x, len %u", tag, data_size);
++
++	uint8_t header[8];
++	big_endian_store_32(header, 0, tag);
++	big_endian_store_32(header, 4, data_size);
++	size_t written_header = fwrite(header, 1, sizeof(header), self->file);
++	if (written_header != sizeof(header)) return;
++	if (data_size > 0) {
++		size_t written_value = fwrite(data, 1, data_size, self->file);
++		if (written_value != data_size) return;
++	}
++	fflush(self->file);
++}
++
++static tlv_entry_t * btstack_tlv_nuttx_find_entry(btstack_tlv_nuttx_t * self, uint32_t tag){
++	btstack_linked_list_iterator_t it;
++	btstack_linked_list_iterator_init(&it, &self->entry_list);
++	while (btstack_linked_list_iterator_has_next(&it)){
++		tlv_entry_t * entry = (tlv_entry_t*) btstack_linked_list_iterator_next(&it);
++		if (entry->tag != tag) continue;
++		return entry;
++	}
++	return NULL;
++}
++
++/**
++ * Delete Tag
++ * @param tag
++ */
++static void btstack_tlv_nuttx_delete_tag(void * context, uint32_t tag){
++	btstack_tlv_nuttx_t * self = (btstack_tlv_nuttx_t *) context;
++	btstack_linked_list_iterator_t it;
++	btstack_linked_list_iterator_init(&it, &self->entry_list);
++	while (btstack_linked_list_iterator_has_next(&it)){
++		tlv_entry_t * entry = (tlv_entry_t*) btstack_linked_list_iterator_next(&it);
++		if (entry->tag != tag) continue;
++		btstack_linked_list_iterator_remove(&it);
++		free(entry);
++		btstack_tlv_nuttx_append_tag(self, tag, NULL, 0);
++		return;
++	}
++}
++
++/**
++ * Get Value for Tag
++ * @param tag
++ * @param buffer
++ * @param buffer_size
++ * @returns size of value
++ */
++static int btstack_tlv_nuttx_get_tag(void * context, uint32_t tag, uint8_t * buffer, uint32_t buffer_size){
++	btstack_tlv_nuttx_t * self = (btstack_tlv_nuttx_t *) context;
++	tlv_entry_t * entry = btstack_tlv_nuttx_find_entry(self, tag);
++	// not found
++	if (!entry) return 0;
++	// return len if buffer = NULL
++	if (!buffer) return entry->len;
++	// otherwise copy data into buffer
++	uint16_t bytes_to_copy = btstack_min(buffer_size, entry->len);
++	memcpy(buffer, &entry->value[0], bytes_to_copy);
++	return bytes_to_copy;
++}
++
++/**
++ * Store Tag
++ * @param tag
++ * @param data
++ * @param data_size
++ */
++static int btstack_tlv_nuttx_store_tag(void * context, uint32_t tag, const uint8_t * data, uint32_t data_size){
++	btstack_tlv_nuttx_t * self = (btstack_tlv_nuttx_t *) context;
++
++	// enforce arbitrary max value size
++	btstack_assert(data_size <= MAX_TLV_VALUE_SIZE);
++
++	// remove old entry
++	tlv_entry_t * old_entry = btstack_tlv_nuttx_find_entry(self, tag);
++	if (old_entry){
++		btstack_linked_list_remove(&self->entry_list, (btstack_linked_item_t *) old_entry);
++		free(old_entry);
++	}
++
++	// create new entry
++	uint32_t entry_size = sizeof(tlv_entry_t) - DUMMY_SIZE + data_size;
++	tlv_entry_t * new_entry = (tlv_entry_t *) malloc(entry_size);
++	if (!new_entry) return 0;
++	memset(new_entry, 0, entry_size);
++	new_entry->tag = tag;
++	new_entry->len = data_size;
++	memcpy(&new_entry->value[0], data, data_size);
++
++	// append new entry
++	btstack_linked_list_add(&self->entry_list, (btstack_linked_item_t *) new_entry);
++
++	// write new tag
++	btstack_tlv_nuttx_append_tag(self, tag, data, data_size);
++
++	return 0;
++}
++
++// returns 0 on success
++static int btstack_tlv_nuttx_read_db(btstack_tlv_nuttx_t * self){
++	// open file
++	log_info("open db %s", self->db_path);
++    const char * mode = btstack_tlv_nuttx_read_only ? "r" : "r+";
++    self->file = fopen(self->db_path, mode);
++    uint8_t header[BTSTACK_TLV_HEADER_LEN];
++    if (self->file){
++    	// checker header
++	    size_t objects_read = fread(header, 1, BTSTACK_TLV_HEADER_LEN, self->file );
++	    int file_valid = 0;
++	    if (objects_read == BTSTACK_TLV_HEADER_LEN){
++	    	if (memcmp(header, btstack_tlv_header_magic, strlen(btstack_tlv_header_magic)) == 0){
++		    	log_info("BTstack Magic Header found");
++		    	// read entries
++		    	while (true){
++					uint8_t entry[8];
++					size_t 	entries_read = fread(entry, 1, sizeof(entry), self->file);
++					if (entries_read == 0){
++						// EOF, we're good
++						file_valid = 1;
++						break;
++					}
++					if (entries_read != sizeof(entry)) break;
++
++                    uint32_t tag = big_endian_read_32(entry, 0);
++                    uint32_t len = big_endian_read_32(entry, 4);
++
++                    // arbitrary safety check: values <= MAX_TLV_VALUE_SIZE
++                    if (len > MAX_TLV_VALUE_SIZE) break;
++
++                    // create new entry for regular tag
++                    tlv_entry_t * new_entry = NULL;
++                    if (len > 0) {
++                        new_entry = (tlv_entry_t *) malloc(sizeof(tlv_entry_t) - DUMMY_SIZE + len);
++                        if (!new_entry) return 0;
++                        new_entry->tag = tag;
++                        new_entry->len = len;
++
++                        // read
++                        size_t value_read = fread(&new_entry->value[0], 1, len, self->file);
++                        if (value_read != len) break;
++                    }
++
++                    // remove old entry
++                    tlv_entry_t * old_entry = btstack_tlv_nuttx_find_entry(self, tag);
++                    if (old_entry){
++                        btstack_linked_list_remove(&self->entry_list, (btstack_linked_item_t *) old_entry);
++                        free(old_entry);
++                    }
++
++                    // append new entry
++                    if (new_entry){
++	                    btstack_linked_list_add(&self->entry_list, (btstack_linked_item_t *) new_entry);
++                    }
++		    	}
++	    	}
++	    }
++	    if (!file_valid) {
++	    	log_info("file invalid, re-create");
++    		fclose(self->file);
++    		self->file = NULL;
++	    }
++    }
++
++    // close file in read-only mode
++    if (btstack_tlv_nuttx_read_only && (self->file != NULL)){
++        fclose(self->file);
++        self->file = NULL;
++        return 0;
++    }
++
++    if (!self->file){
++    	// create truncate file
++	    self->file = fopen(self->db_path,"w+");
++        if (!self->file) {
++            log_error("failed to create file");
++            return -1;
++        }
++	    memset(header, 0, sizeof(header));
++	    strcpy((char *)header, btstack_tlv_header_magic);
++	    fwrite(header, 1, sizeof(header), self->file);
++	    // write out all valid entries (if any)
++		btstack_linked_list_iterator_t it;
++		btstack_linked_list_iterator_init(&it, &self->entry_list);
++		while (btstack_linked_list_iterator_has_next(&it)){
++			tlv_entry_t * entry = (tlv_entry_t*) btstack_linked_list_iterator_next(&it);
++			btstack_tlv_nuttx_append_tag(self, entry->tag, &entry->value[0], entry->len);
++		}
++    }
++	return 0;
++}
++
++static const btstack_tlv_t btstack_tlv_nuttx = {
++	/* int  (*get_tag)(..);     */ &btstack_tlv_nuttx_get_tag,
++	/* int (*store_tag)(..);    */ &btstack_tlv_nuttx_store_tag,
++	/* void (*delete_tag)(v..); */ &btstack_tlv_nuttx_delete_tag,
++};
++
++/**
++ * Init Tag Length Value Store
++ */
++const btstack_tlv_t * btstack_tlv_nuttx_init_instance(btstack_tlv_nuttx_t * self, const char * db_path){
++	memset(self, 0, sizeof(btstack_tlv_nuttx_t));
++	self->db_path = db_path;
++
++	// read DB
++    if (db_path != NULL){
++        btstack_tlv_nuttx_read_db(self);
++    }
++	return &btstack_tlv_nuttx;
++}
++
++void btstack_tlv_nuttx_set_read_only(void){
++    btstack_tlv_nuttx_read_only = true;
++}
++
++/**
++ * Free TLV entries
++ * @param self
++ */
++void btstack_tlv_nuttx_deinit(btstack_tlv_nuttx_t * self){
++    // free all entries
++    btstack_linked_list_iterator_t it;
++    btstack_linked_list_iterator_init(&it, &self->entry_list);
++    while (btstack_linked_list_iterator_has_next(&it)){
++        tlv_entry_t * entry = (tlv_entry_t*) btstack_linked_list_iterator_next(&it);
++		btstack_linked_list_iterator_remove(&it);
++		free(entry);
++    }
++    btstack_tlv_nuttx_read_only = true;
++}
+diff --git a/platform/nuttx/btstack_tlv_nuttx.h b/platform/nuttx/btstack_tlv_nuttx.h
+new file mode 100644
+index 000000000..c4e92423e
+--- /dev/null
++++ b/platform/nuttx/btstack_tlv_nuttx.h
+@@ -0,0 +1,79 @@
++/*
++ * Copyright (C) 2017 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ */
++
++/*
++ *  btstack_tlv_nuttx.h
++ *
++ *  Implementation for BTstack's Tag Value Length Persistent Storage implementations
++ *  using in-memory storage (RAM & malloc) and append-only log files on disc
++ */
++
++#ifndef BTSTACK_TLV_NUTTX_H
++#define BTSTACK_TLV_NUTTX_H
++
++#include <stdint.h>
++#include <stdio.h>
++#include "btstack_tlv.h"
++#include "btstack_linked_list.h"
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++typedef struct {
++	btstack_linked_list_t entry_list;
++	const char * db_path;
++	FILE * file;
++} btstack_tlv_nuttx_t;
++
++/**
++ * Init Tag Length Value Store
++ * @param context btstack_tlv_nuttx_t
++ * @param db_path on disc
++ */
++const btstack_tlv_t * btstack_tlv_nuttx_init_instance(btstack_tlv_nuttx_t * context, const char * db_path);
++
++/**
++ * Disable writing to TLV file
++ * @note must be called before btstack_tlv_nuttx_init_instance
++ */
++void btstack_tlv_nuttx_set_read_only(void);
++
++/**
++ * Free TLV entries
++ * @param self
++ */
++void btstack_tlv_nuttx_deinit(btstack_tlv_nuttx_t * self);
++
++#if defined __cplusplus
++}
++#endif
++#endif // BTSTACK_TLV_NUTTX_H
+diff --git a/platform/nuttx/btstack_uart_nuttx.c b/platform/nuttx/btstack_uart_nuttx.c
+new file mode 100644
+index 000000000..29cc3c0c7
+--- /dev/null
++++ b/platform/nuttx/btstack_uart_nuttx.c
+@@ -0,0 +1,643 @@
++/*
++ * Copyright (C) 2016 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#define BTSTACK_FILE__ "btstack_uart_nuttx.c"
++
++/*
++ *  btstack_uart_nuttx.c
++ *
++ *  Common code to access serial port via asynchronous block read/write commands
++ *
++ */
++
++#include "btstack_uart.h"
++#include "btstack_run_loop.h"
++#include "btstack_debug.h"
++
++#include <termios.h>  /* POSIX terminal control definitions */
++#include <fcntl.h>    /* File control definitions */
++#include <unistd.h>   /* UNIX standard function definitions */
++#include <string.h>
++#include <errno.h>
++#include <stdlib.h>
++
++// uart config
++static const btstack_uart_config_t * uart_config;
++
++// on macOS 12.1, CTS/RTS control flags are always read back as zero.
++// To work around this, we cache our terios settings
++struct termios btstack_uart_block_termios;
++
++// data source for integration with BTstack Runloop
++static btstack_data_source_t transport_data_source;
++
++// block write
++static int             btstack_uart_block_write_bytes_len;
++static const uint8_t * btstack_uart_block_write_bytes_data;
++
++// block read
++static uint16_t  btstack_uart_block_read_bytes_len;
++static uint8_t * btstack_uart_block_read_bytes_data;
++
++// callbacks
++static void (*block_sent)(void);
++static void (*block_received)(void);
++
++
++static int btstack_uart_nuttx_init(const btstack_uart_config_t * config){
++    uart_config = config;
++    return 0;
++}
++
++static void hci_uart_nuttx_process(btstack_data_source_t *ds, btstack_data_source_callback_type_t callback_type);
++
++static void btstack_uart_block_nuttx_process_write(btstack_data_source_t *ds) {
++
++    if (btstack_uart_block_write_bytes_len == 0) return;
++
++    uint32_t start = btstack_run_loop_get_time_ms();
++
++    // write up to write_bytes_len to fd
++    int bytes_written = (int) write(ds->source.fd, btstack_uart_block_write_bytes_data, btstack_uart_block_write_bytes_len);
++    uint32_t end = btstack_run_loop_get_time_ms();
++    if (end - start > 10){
++        log_info("write took %u ms", end - start);
++    }
++    if (bytes_written == 0){
++        log_error("wrote zero bytes\n");
++        exit(EXIT_FAILURE);
++    }
++    if (bytes_written < 0) {
++        log_error("write returned error\n");
++        btstack_run_loop_enable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_WRITE);
++        exit(EXIT_FAILURE);
++    }
++
++    btstack_uart_block_write_bytes_data += bytes_written;
++    btstack_uart_block_write_bytes_len  -= bytes_written;
++
++    if (btstack_uart_block_write_bytes_len){
++        btstack_run_loop_enable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_WRITE);
++        return;
++    }
++
++    btstack_run_loop_disable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_WRITE);
++
++    // notify done
++    if (block_sent){
++        block_sent();
++    }
++}
++
++static void btstack_uart_block_nuttx_process_read(btstack_data_source_t *ds) {
++
++    if (btstack_uart_block_read_bytes_len == 0) {
++        log_info("called but no read pending");
++        btstack_run_loop_disable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_READ);
++    }
++
++    uint32_t start = btstack_run_loop_get_time_ms();
++
++    // read up to bytes_to_read data in
++    ssize_t bytes_read = read(ds->source.fd, btstack_uart_block_read_bytes_data, btstack_uart_block_read_bytes_len);
++    // log_info("read need %u bytes, got %d", btstack_uart_block_read_bytes_len, (int) bytes_read);
++    uint32_t end = btstack_run_loop_get_time_ms();
++    if (end - start > 10){
++        log_info("read took %u ms", end - start);
++    }
++    if (bytes_read == 0){
++        log_error("read zero bytes\n");
++        return;
++    }
++    if (bytes_read < 0) {
++        log_error("read returned error\n");
++        return;
++    }
++
++    btstack_uart_block_read_bytes_len   -= bytes_read;
++    btstack_uart_block_read_bytes_data  += bytes_read;
++    if (btstack_uart_block_read_bytes_len > 0) return;
++
++    btstack_run_loop_disable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_READ);
++
++    if (block_received){
++        block_received();
++    }
++}
++
++static int btstack_uart_nuttx_set_baudrate(uint32_t baudrate){
++
++    int fd = transport_data_source.source.fd;
++
++    log_info("h4_set_baudrate %u", baudrate);
++
++    speed_t brate = baudrate; // let you override switch below if needed
++    switch(baudrate) {
++        case    9600: brate=B9600;    break;
++        case   19200: brate=B19200;   break;
++        case   38400: brate=B38400;   break;
++        case 57600:  brate=B57600;  break;
++        case 115200: brate=B115200; break;
++#ifdef B230400
++        case 230400: brate=B230400; break;
++#endif
++#ifdef B460800
++        case 460800: brate=B460800; break;
++#endif
++#ifdef B500000
++        case  500000: brate=B500000;  break;
++#endif
++#ifdef B576000
++        case  576000: brate=B576000;  break;
++#endif
++#ifdef B921600
++        case 921600: brate=B921600; break;
++#endif
++#ifdef B1000000
++        case 1000000: brate=B1000000; break;
++#endif
++#ifdef B1152000
++        case 1152000: brate=B1152000; break;
++#endif
++#ifdef B1500000
++        case 1500000: brate=B1500000; break;
++#endif
++#ifdef B2000000
++        case 2000000: brate=B2000000; break;
++#endif
++#ifdef B2500000
++        case 2500000: brate=B2500000; break;
++#endif
++#ifdef B3000000
++        case 3000000: brate=B3000000; break;
++#endif
++#ifdef B3500000
++        case 3500000: brate=B3500000; break;
++#endif
++#ifdef B400000
++        case 4000000: brate=B4000000; break;
++#endif
++        default:
++            log_error("can't set baudrate %dn", baudrate );
++            return -1;
++    }
++    cfsetospeed(&btstack_uart_block_termios, brate);
++    cfsetispeed(&btstack_uart_block_termios, brate);
++
++    // also set options for __APPLE__ to enforce write drain
++    // Mac OS Mojave: tcsdrain did not work as expected
++
++    if( tcsetattr(fd, TCSADRAIN, &btstack_uart_block_termios) < 0) {
++        log_error("Couldn't set term attributes");
++        return -1;
++    }
++
++    return 0;
++}
++
++static void btstack_uart_nuttx_set_parity_option(struct termios * toptions, int parity){
++    switch (parity){
++        case BTSTACK_UART_PARITY_OFF:
++            toptions->c_cflag &= ~PARENB;
++            toptions->c_cflag &= ~PARODD;
++            break;
++        case BTSTACK_UART_PARITY_EVEN:
++            toptions->c_cflag |=  PARENB;
++            toptions->c_cflag &= ~PARODD;
++            break;
++        case BTSTACK_UART_PARITY_ODD:
++            toptions->c_cflag |= PARENB;
++            toptions->c_cflag |= PARODD;
++        default:
++            break;
++    }
++}
++
++static void btstack_uart_nuttx_set_flowcontrol_option(struct termios * toptions, int flowcontrol){
++    if (flowcontrol) {
++        // with flow control
++        toptions->c_cflag |= CRTSCTS;
++    } else {
++        // no flow control
++        toptions->c_cflag &= ~CRTSCTS;
++    }
++}
++
++static int btstack_uart_nuttx_set_parity(int parity){
++    int fd = transport_data_source.source.fd;
++    btstack_uart_nuttx_set_parity_option(&btstack_uart_block_termios, parity);
++    if(tcsetattr(fd, TCSANOW, &btstack_uart_block_termios) < 0) {
++        log_error("Couldn't set term attributes");
++        return -1;
++    }
++    return 0;
++}
++
++
++static int btstack_uart_nuttx_set_flowcontrol(int flowcontrol){
++    int fd = transport_data_source.source.fd;
++    btstack_uart_nuttx_set_flowcontrol_option(&btstack_uart_block_termios, flowcontrol);
++    if(tcsetattr(fd, TCSANOW, &btstack_uart_block_termios) < 0) {
++        log_error("Couldn't set term attributes");
++        return -1;
++    }
++    return 0;
++}
++
++static int btstack_uart_nuttx_open(void){
++
++    const char * device_name = uart_config->device_name;
++    const uint32_t baudrate  = uart_config->baudrate;
++    const int flowcontrol    = uart_config->flowcontrol;
++    const int parity         = uart_config->parity;
++
++    int flags = O_RDWR | O_NOCTTY | O_NONBLOCK;
++    int fd = open(device_name, flags);
++    if (fd == -1)  {
++        log_error("Unable to open port %s", device_name);
++        return -1;
++    }
++
++    if (tcgetattr(fd, &btstack_uart_block_termios) < 0) {
++        log_error("Couldn't get term attributes");
++        return -1;
++    }
++    cfmakeraw(&btstack_uart_block_termios);   // make raw
++
++    // 8N1
++    btstack_uart_block_termios.c_cflag &= ~CSTOPB;
++    btstack_uart_block_termios.c_cflag |= CS8;
++
++    btstack_uart_block_termios.c_cflag |= CREAD | CLOCAL;  // turn on READ & ignore ctrl lines
++    btstack_uart_block_termios.c_iflag &= ~(IXON | IXOFF | IXANY); // turn off s/w flow ctrl
++
++    // see: http://unixwiz.net/techtips/termios-vmin-vtime.html
++    btstack_uart_block_termios.c_cc[VMIN]  = 1;
++    btstack_uart_block_termios.c_cc[VTIME] = 0;
++
++    // no parity
++    btstack_uart_nuttx_set_parity_option(&btstack_uart_block_termios, parity);
++
++    // flowcontrol
++    btstack_uart_nuttx_set_flowcontrol_option(&btstack_uart_block_termios, flowcontrol);
++
++    if(tcsetattr(fd, TCSANOW, &btstack_uart_block_termios) < 0) {
++        log_error("Couldn't set term attributes");
++        return -1;
++    }
++
++    // store fd in data source
++    transport_data_source.source.fd = fd;
++
++    // also set baudrate
++    if (btstack_uart_nuttx_set_baudrate(baudrate) < 0){
++        return -1;
++    }
++
++    // set up data_source
++    btstack_run_loop_set_data_source_fd(&transport_data_source, fd);
++    btstack_run_loop_set_data_source_handler(&transport_data_source, &hci_uart_nuttx_process);
++    btstack_run_loop_add_data_source(&transport_data_source);
++
++    // wait a bit - at least cheap FTDI232 clones might send the first byte out incorrectly
++    usleep(100000);
++
++    log_info("Open tty %s", device_name);
++    return 0;
++}
++
++static int btstack_uart_nuttx_close_new(void){
++
++    // first remove run loop handler
++    btstack_run_loop_remove_data_source(&transport_data_source);
++
++    // then close device
++    close(transport_data_source.source.fd);
++    transport_data_source.source.fd = -1;
++    return 0;
++}
++
++static void btstack_uart_nuttx_set_block_received( void (*block_handler)(void)){
++    btstack_uart_block_read_bytes_len = 0;
++    block_received = block_handler;
++}
++
++static void btstack_uart_nuttx_set_block_sent( void (*block_handler)(void)){
++    btstack_uart_block_write_bytes_len = 0;
++    block_sent = block_handler;
++}
++
++static void btstack_uart_nuttx_send_block(const uint8_t *data, uint16_t size){
++    btstack_assert(btstack_uart_block_write_bytes_len == 0);
++
++    // setup async write
++    btstack_uart_block_write_bytes_data = data;
++    btstack_uart_block_write_bytes_len  = size;
++    btstack_run_loop_enable_data_source_callbacks(&transport_data_source, DATA_SOURCE_CALLBACK_WRITE);
++}
++
++static void btstack_uart_nuttx_receive_block(uint8_t *buffer, uint16_t len){
++    btstack_assert(btstack_uart_block_read_bytes_len == 0);
++
++    // setup async read
++    btstack_uart_block_read_bytes_data = buffer;
++    btstack_uart_block_read_bytes_len = len;
++    btstack_run_loop_enable_data_source_callbacks(&transport_data_source, DATA_SOURCE_CALLBACK_READ);
++}
++
++#ifdef ENABLE_H5
++
++// SLIP Implementation Start
++#include "btstack_slip.h"
++
++// max size of outgoing SLIP chunks
++#define SLIP_TX_CHUNK_LEN   128
++
++#define SLIP_RECEIVE_BUFFER_SIZE 128
++
++// encoded SLIP chunk
++static uint8_t   btstack_uart_slip_outgoing_buffer[SLIP_TX_CHUNK_LEN+1];
++
++// block write
++static int             btstack_uart_slip_write_bytes_len;
++static const uint8_t * btstack_uart_slip_write_bytes_data;
++static int             btstack_uart_slip_write_active;
++
++// block read
++static uint8_t         btstack_uart_slip_receive_buffer[SLIP_RECEIVE_BUFFER_SIZE];
++static uint16_t        btstack_uart_slip_receive_pos;
++static uint16_t        btstack_uart_slip_receive_len;
++static uint8_t         btstack_uart_slip_receive_track_start;
++static uint32_t        btstack_uart_slip_receive_start_time;
++static int             btstack_uart_slip_receive_active;
++
++// callbacks
++static void (*frame_sent)(void);
++static void (*frame_received)(uint16_t frame_size);
++
++static void btstack_uart_slip_nuttx_block_sent(void);
++
++static void btstack_uart_slip_nuttx_process_write(btstack_data_source_t *ds) {
++
++    if (btstack_uart_slip_write_bytes_len == 0) return;
++
++    uint32_t start = btstack_run_loop_get_time_ms();
++
++    // write up to btstack_uart_slip_write_bytes_len to fd
++    int bytes_written = (int) write(ds->source.fd, btstack_uart_slip_write_bytes_data, btstack_uart_slip_write_bytes_len);
++    if (bytes_written < 0) {
++        btstack_run_loop_enable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_WRITE);
++        return;
++    }
++
++    uint32_t end = btstack_run_loop_get_time_ms();
++    if (end - start > 10){
++        log_info("write took %u ms", end - start);
++    }
++
++    btstack_uart_slip_write_bytes_data += bytes_written;
++    btstack_uart_slip_write_bytes_len  -= bytes_written;
++
++    if (btstack_uart_slip_write_bytes_len){
++        btstack_run_loop_enable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_WRITE);
++        return;
++    }
++
++    btstack_run_loop_disable_data_source_callbacks(ds, DATA_SOURCE_CALLBACK_WRITE);
++
++    // done with TX chunk
++    btstack_uart_slip_nuttx_block_sent();
++}
++
++// @returns frame size if complete frame decoded and delivered
++static uint16_t btstack_uart_slip_nuttx_process_buffer(void){
++    log_debug("process buffer: pos %u, len %u", btstack_uart_slip_receive_pos, btstack_uart_slip_receive_len);
++
++    uint16_t frame_size = 0;
++    while (btstack_uart_slip_receive_pos < btstack_uart_slip_receive_len && frame_size == 0){
++        btstack_slip_decoder_process(btstack_uart_slip_receive_buffer[btstack_uart_slip_receive_pos++]);
++        frame_size = btstack_slip_decoder_frame_size();
++    }
++
++    // reset buffer if fully processed
++    if (btstack_uart_slip_receive_pos == btstack_uart_slip_receive_len ){
++        btstack_uart_slip_receive_len = 0;
++        btstack_uart_slip_receive_pos = 0;
++    }
++
++    // deliver frame if frame complete
++    if (frame_size) {
++
++        // receive done
++        btstack_uart_slip_receive_active = 0;
++
++        // only print if read was involved
++        if (btstack_uart_slip_receive_track_start == 0){
++            log_info("frame receive time %u ms", btstack_run_loop_get_time_ms() - btstack_uart_slip_receive_start_time);
++            btstack_uart_slip_receive_start_time = 0;
++        }
++
++        (*frame_received)(frame_size);
++    }
++
++    return frame_size;
++}
++
++static void btstack_uart_slip_nuttx_process_read(btstack_data_source_t *ds) {
++
++    uint32_t start = btstack_run_loop_get_time_ms();
++
++    if (btstack_uart_slip_receive_track_start){
++        btstack_uart_slip_receive_track_start = 0;
++        btstack_uart_slip_receive_start_time = start;
++    }
++
++    // read up to bytes_to_read data in
++    ssize_t bytes_read = read(ds->source.fd, btstack_uart_slip_receive_buffer, SLIP_RECEIVE_BUFFER_SIZE);
++
++    log_debug("requested %u bytes, got %d", SLIP_RECEIVE_BUFFER_SIZE, (int) bytes_read);
++    uint32_t end = btstack_run_loop_get_time_ms();
++    if (end - start > 10){
++        log_info("read took %u ms", end - start);
++    }
++    if (bytes_read < 0) return;
++
++    btstack_uart_slip_receive_pos = 0;
++    btstack_uart_slip_receive_len = (uint16_t ) bytes_read;
++
++    btstack_uart_slip_nuttx_process_buffer();
++}
++
++// -----------------------------
++// SLIP ENCODING
++
++static void btstack_uart_slip_nuttx_encode_chunk_and_send(void){
++    uint16_t pos = 0;
++    while (btstack_slip_encoder_has_data() & (pos < SLIP_TX_CHUNK_LEN)) {
++        btstack_uart_slip_outgoing_buffer[pos++] = btstack_slip_encoder_get_byte();
++    }
++
++    // setup async write and start sending
++    log_debug("slip: send %d bytes", pos);
++    btstack_uart_slip_write_bytes_data = btstack_uart_slip_outgoing_buffer;
++    btstack_uart_slip_write_bytes_len  = pos;
++    btstack_run_loop_enable_data_source_callbacks(&transport_data_source, DATA_SOURCE_CALLBACK_WRITE);
++}
++
++static void btstack_uart_slip_nuttx_block_sent(void){
++    // check if more data to send
++    if (btstack_slip_encoder_has_data()){
++        btstack_uart_slip_nuttx_encode_chunk_and_send();
++        return;
++    }
++
++    // write done
++    btstack_uart_slip_write_active = 0;
++
++    // notify done
++    if (frame_sent){
++        frame_sent();
++    }
++}
++
++static void btstack_uart_slip_nuttx_send_frame(const uint8_t * frame, uint16_t frame_size){
++
++    // write started
++    btstack_uart_slip_write_active = 1;
++
++    // Prepare encoding of Header + Packet (+ DIC)
++    btstack_slip_encoder_start(frame, frame_size);
++
++    // Fill rest of chunk from packet and send
++    btstack_uart_slip_nuttx_encode_chunk_and_send();
++}
++
++// SLIP ENCODING
++// -----------------------------
++
++static void btstack_uart_slip_nuttx_receive_frame(uint8_t *buffer, uint16_t len){
++
++    // receive started
++    btstack_uart_slip_receive_active = 1;
++
++    log_debug("receive block, size %u", len);
++    btstack_uart_slip_receive_track_start = 1;
++
++    // setup SLIP decoder
++    btstack_slip_decoder_init(buffer, len);
++
++    // process bytes received in earlier read. might deliver packet, which in turn will call us again.
++    // just make sure to exit right away
++    if (btstack_uart_slip_receive_len){
++        int frame_found = btstack_uart_slip_nuttx_process_buffer();
++        if (frame_found) return;
++    }
++
++    // no frame delivered, enable nuttx read
++    btstack_run_loop_enable_data_source_callbacks(&transport_data_source, DATA_SOURCE_CALLBACK_READ);
++}
++
++
++
++static void btstack_uart_slip_nuttx_set_frame_received( void (*block_handler)(uint16_t frame_size)){
++    frame_received = block_handler;
++}
++
++static void btstack_uart_slip_nuttx_set_frame_sent( void (*block_handler)(void)){
++    frame_sent = block_handler;
++}
++
++// SLIP Implementation End
++#endif
++
++// dispatch into block or SLIP code
++static void hci_uart_nuttx_process(btstack_data_source_t *ds, btstack_data_source_callback_type_t callback_type) {
++    if (ds->source.fd < 0) return;
++    switch (callback_type){
++        case DATA_SOURCE_CALLBACK_READ:
++#ifdef ENABLE_H5
++            if (btstack_uart_slip_receive_active){
++                btstack_uart_slip_nuttx_process_read(ds);
++            } else
++#endif
++            {
++                btstack_uart_block_nuttx_process_read(ds);
++            }
++            break;
++        case DATA_SOURCE_CALLBACK_WRITE:
++#ifdef ENABLE_H5
++            if (btstack_uart_slip_write_active){
++                btstack_uart_slip_nuttx_process_write(ds);
++            } else
++#endif
++            {
++                btstack_uart_block_nuttx_process_write(ds);
++            }
++            break;
++        default:
++            break;
++    }
++}
++
++static const btstack_uart_t btstack_uart_nuttx = {
++    /* int  (*init)(hci_transport_config_uart_t * config); */              &btstack_uart_nuttx_init,
++    /* int  (*open)(void); */                                              &btstack_uart_nuttx_open,
++    /* int  (*close)(void); */                                             &btstack_uart_nuttx_close_new,
++    /* void (*set_block_received)(void (*handler)(void)); */               &btstack_uart_nuttx_set_block_received,
++    /* void (*set_block_sent)(void (*handler)(void)); */                   &btstack_uart_nuttx_set_block_sent,
++    /* int  (*set_baudrate)(uint32_t baudrate); */                         &btstack_uart_nuttx_set_baudrate,
++    /* int  (*set_parity)(int parity); */                                  &btstack_uart_nuttx_set_parity,
++    /* int  (*set_flowcontrol)(int flowcontrol); */                        &btstack_uart_nuttx_set_flowcontrol,
++    /* void (*receive_block)(uint8_t *buffer, uint16_t len); */            &btstack_uart_nuttx_receive_block,
++    /* void (*send_block)(const uint8_t *buffer, uint16_t length); */      &btstack_uart_nuttx_send_block,
++    /* int (*get_supported_sleep_modes); */                                NULL,
++    /* void (*set_sleep)(btstack_uart_sleep_mode_t sleep_mode); */         NULL,
++    /* void (*set_wakeup_handler)(void (*handler)(void)); */               NULL,
++
++#ifdef ENABLE_H5
++    /* void (*set_frame_received)(void (*handler)(uint16_t frame_size); */ &btstack_uart_slip_nuttx_set_frame_received,
++    /* void (*set_fraae_sent)(void (*handler)(void)); */                   &btstack_uart_slip_nuttx_set_frame_sent,
++    /* void (*receive_frame)(uint8_t *buffer, uint16_t len); */            &btstack_uart_slip_nuttx_receive_frame,
++    /* void (*send_frame)(const uint8_t *buffer, uint16_t length); */      &btstack_uart_slip_nuttx_send_frame,
++#else
++    NULL, NULL, NULL, NULL,
++#endif
++};
++
++const btstack_uart_t * btstack_uart_nuttx_instance(void){
++	return &btstack_uart_nuttx;
++}
+diff --git a/platform/nuttx/hci_dump_nuttx_fs.c b/platform/nuttx/hci_dump_nuttx_fs.c
+new file mode 100644
+index 000000000..43b8abf43
+--- /dev/null
++++ b/platform/nuttx/hci_dump_nuttx_fs.c
+@@ -0,0 +1,215 @@
++/*
++ * Copyright (C) 2014-2020 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#define BTSTACK_FILE__ "hci_dump_nuttx_fs.c"
++
++/*
++ *  hci_dump_nuttx_fs.c
++ *
++ *  Dump HCI trace in various formats into a file:
++ *
++ *  - BlueZ's hcidump format
++ *  - Apple's PacketLogger
++ *  - stdout hexdump
++ *
++ */
++
++#include "btstack_config.h"
++
++#include "hci_dump_nuttx_fs.h"
++
++#include "btstack_debug.h"
++#include "btstack_util.h"
++
++#include <sys/time.h>     // for timestamps
++#include <sys/stat.h>     // file modes
++
++#include <time.h>
++#include <stdio.h>        // printf
++#include <fcntl.h>        // open
++#include <unistd.h>       // write
++#include <errno.h>        // errno
++
++static int  dump_file = -1;
++static int  dump_format;
++static char log_message_buffer[256];
++
++static void hci_dump_nuttx_fs_reset(void){
++    btstack_assert(dump_file >= 0);
++    (void) lseek(dump_file, 0, SEEK_SET);
++    int err = ftruncate(dump_file, 0);
++    UNUSED(err);
++}
++
++// provide summary for ISO Data Packets if not supported by fileformat/viewer yet
++static uint16_t hci_dump_iso_summary(uint8_t in,  uint8_t *packet, uint16_t len){
++    UNUSED(len);
++    uint16_t conn_handle = little_endian_read_16(packet, 0) & 0xfff;
++    uint8_t pb = (packet[1] >> 4) & 3;
++    uint8_t ts = (packet[1] >> 6) & 1;
++    uint16_t pos = 4;
++    uint32_t time_stamp = 0;
++    if (ts){
++        time_stamp = little_endian_read_32(packet, pos);
++        pos += 4;
++    }
++    if ((pb & 1) == 0) {
++        uint16_t packet_sequence = little_endian_read_16(packet, pos);
++        pos += 2;
++        uint16_t iso_sdu_len = little_endian_read_16(packet, pos);
++        uint8_t packet_status_flag = packet[pos+1] >> 6;
++        return snprintf(log_message_buffer,sizeof(log_message_buffer), "ISO %s, handle %04x, pb %u, ts 0x%08x, size %u, sequence 0x%04x, packet status %u, iso pdu len %u",
++                        in ? "IN" : "OUT", conn_handle, pb, time_stamp, len, packet_sequence, packet_status_flag, iso_sdu_len);
++    } else {
++        return snprintf(log_message_buffer,sizeof(log_message_buffer), "ISO %s, handle %04x, pb %u, ts 0x%08x, size %u",
++                        in ? "IN" : "OUT", conn_handle, pb, time_stamp, len);
++    }
++}
++
++static void hci_dump_nuttx_fs_log_packet(uint8_t packet_type, uint8_t in, uint8_t *packet, uint16_t len) {
++    if (dump_file < 0) return;
++
++    static union {
++        uint8_t header_bluez[HCI_DUMP_HEADER_SIZE_BLUEZ];
++        uint8_t header_packetlogger[HCI_DUMP_HEADER_SIZE_PACKETLOGGER];
++        uint8_t header_btsnoop[HCI_DUMP_HEADER_SIZE_BTSNOOP+1];
++    } header;
++
++    uint32_t tv_sec = 0;
++    uint32_t tv_us  = 0;
++    uint64_t ts_usec;
++
++    // get time
++    struct timeval curr_time;
++    gettimeofday(&curr_time, NULL);
++    tv_sec = curr_time.tv_sec;
++    tv_us  = curr_time.tv_usec;
++
++    uint16_t header_len = 0;
++    switch (dump_format){
++        case HCI_DUMP_BLUEZ:
++            // ISO packets not supported
++            if (packet_type == HCI_ISO_DATA_PACKET){
++                len = hci_dump_iso_summary(in, packet, len);
++                packet_type = LOG_MESSAGE_PACKET;
++                packet = (uint8_t*) log_message_buffer;
++            }
++            hci_dump_setup_header_bluez(header.header_bluez, tv_sec, tv_us, packet_type, in, len);
++            header_len = HCI_DUMP_HEADER_SIZE_BLUEZ;
++            break;
++        case HCI_DUMP_PACKETLOGGER:
++            // ISO packets not supported
++            if (packet_type == HCI_ISO_DATA_PACKET){
++                len = hci_dump_iso_summary(in, packet, len);
++                packet_type = LOG_MESSAGE_PACKET;
++                packet = (uint8_t*) log_message_buffer;
++            }
++            hci_dump_setup_header_packetlogger(header.header_packetlogger, tv_sec, tv_us, packet_type, in, len);
++            header_len = HCI_DUMP_HEADER_SIZE_PACKETLOGGER;
++            break;
++        case HCI_DUMP_BTSNOOP:
++            // log messages not supported
++            if (packet_type == LOG_MESSAGE_PACKET) return;
++            ts_usec = 0xdcddb30f2f8000LLU + 1000000LLU * curr_time.tv_sec + curr_time.tv_usec;
++            // append packet type to pcap header
++            hci_dump_setup_header_btsnoop(header.header_btsnoop, ts_usec >> 32, ts_usec & 0xFFFFFFFF, 0, packet_type, in, len+1);
++            header.header_btsnoop[HCI_DUMP_HEADER_SIZE_BTSNOOP] = packet_type;
++            header_len = HCI_DUMP_HEADER_SIZE_BTSNOOP + 1;
++            break;
++        default:
++            btstack_unreachable();
++            return;
++    }
++
++    ssize_t bytes_written;
++    bytes_written = write(dump_file, &header, header_len);
++    UNUSED(bytes_written);
++    bytes_written = write(dump_file, packet, len );
++    UNUSED(bytes_written);
++}
++
++static void hci_dump_nuttx_fs_log_message(int log_level, const char * format, va_list argptr){
++    UNUSED(log_level);
++    if (dump_file < 0) return;
++    int len = vsnprintf(log_message_buffer, sizeof(log_message_buffer), format, argptr);
++    hci_dump_nuttx_fs_log_packet(LOG_MESSAGE_PACKET, 0, (uint8_t*) log_message_buffer, len);
++}
++
++// returns system errno
++int hci_dump_nuttx_fs_open(const char *filename, hci_dump_format_t format){
++    btstack_assert(format == HCI_DUMP_BLUEZ || format == HCI_DUMP_PACKETLOGGER || format == HCI_DUMP_BTSNOOP);
++
++    dump_format = format;
++    int oflags = O_WRONLY | O_CREAT | O_TRUNC;
++    dump_file = open(filename, oflags, S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH );
++    if (dump_file < 0){
++        printf("failed to open file %s, errno = %d\n", filename, errno);
++        return errno;
++    }
++
++    if (format == HCI_DUMP_BTSNOOP){
++        // write BTSnoop file header
++        const uint8_t file_header[] = {
++            // Identification Pattern: "btsnoop\0"
++            0x62, 0x74, 0x73, 0x6E, 0x6F, 0x6F, 0x70, 0x00,
++            // Version: 1
++            0x00, 0x00, 0x00, 0x01,
++            // Datalink Type: 1002 - H4
++            0x00, 0x00, 0x03, 0xEA,
++        };
++        ssize_t bytes_written = write(dump_file, &file_header, sizeof(file_header));
++        UNUSED(bytes_written);
++    }
++    return 0;
++}
++
++void hci_dump_nuttx_fs_close(void){
++    close(dump_file);
++    dump_file = -1;
++}
++
++const hci_dump_t * hci_dump_nuttx_fs_get_instance(void){
++    static const hci_dump_t hci_dump_instance = {
++        // void (*reset)(void);
++        &hci_dump_nuttx_fs_reset,
++        // void (*log_packet)(uint8_t packet_type, uint8_t in, uint8_t *packet, uint16_t len);
++        &hci_dump_nuttx_fs_log_packet,
++        // void (*log_message)(int log_level, const char * format, va_list argptr);
++        &hci_dump_nuttx_fs_log_message,
++    };
++    return &hci_dump_instance;
++}
+diff --git a/platform/nuttx/hci_dump_nuttx_fs.h b/platform/nuttx/hci_dump_nuttx_fs.h
+new file mode 100644
+index 000000000..3c2b91cd2
+--- /dev/null
++++ b/platform/nuttx/hci_dump_nuttx_fs.h
+@@ -0,0 +1,77 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++/*
++ *  Dump HCI trace in binary formats like PacketLogger and BlueZ (hcidump) into file
++ */
++
++#ifndef HCI_DUMP_NUTTX_FS_H
++#define HCI_DUMP_NUTTX_FS_H
++
++#include <stdint.h>
++#include <stdarg.h>       // for va_list
++#include "hci_dump.h"
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++/**
++ * @brief Get HCI Dump NUTTX FS Instance
++ * @return hci_dump_impl
++ */
++const hci_dump_t * hci_dump_nuttx_fs_get_instance(void);
++
++/*
++ * @brief Open Log file
++ * @param filename or path
++ * @param format
++ * @returns 0 if ok, errno otherwise
++ */
++int hci_dump_nuttx_fs_open(const char *filename, hci_dump_format_t format);
++
++/*
++ * @brief Close Log file
++ */
++void hci_dump_nuttx_fs_close(void);
++
++/* API_END */
++
++#if defined __cplusplus
++}
++#endif
++#endif // HCI_DUMP_NUTTX_FS_H
+diff --git a/platform/nuttx/hci_dump_nuttx_stdout.c b/platform/nuttx/hci_dump_nuttx_stdout.c
+new file mode 100644
+index 000000000..49bedfdb5
+--- /dev/null
++++ b/platform/nuttx/hci_dump_nuttx_stdout.c
+@@ -0,0 +1,157 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#ifdef ENABLE_PRINTF_HEXDUMP
++
++#define BTSTACK_FILE__ "hci_dump_nuttx_stdout.c"
++
++/*
++ *  Dump HCI trace on stdout
++ */
++
++#include "hci_dump.h"
++#include "btstack_config.h"
++#include "hci.h"
++#include <time.h>
++#include <sys/time.h>     // for timestamps
++#include "hci_cmd.h"
++#include <stdio.h>
++
++#ifndef ENABLE_PRINTF_HEXDUMP
++#error "HCI Dump on stdout requires ENABLE_PRINTF_HEXDUMP to be defined. Use different hci dump implementation or add ENABLE_PRINTF_HEXDUMP to btstack_config.h"
++#endif
++
++static char time_string[40];
++static char log_message_buffer[HCI_DUMP_MAX_MESSAGE_LEN];
++
++static void hci_dump_nuttx_stdout_timestamp(void){
++    struct tm* ptm;
++    struct timeval curr_time;
++    gettimeofday(&curr_time, NULL);
++    time_t curr_time_secs = curr_time.tv_sec;
++    /* Obtain the time of day, and convert it to a tm struct. */
++    ptm = localtime (&curr_time_secs);
++    /* assert localtime was successful */
++    if (!ptm) return;
++    /* Format the date and time, down to a single second. */
++    strftime (time_string, sizeof (time_string), "[%Y-%m-%d %H:%M:%S", ptm);
++    /* Compute milliseconds from microseconds. */
++    uint16_t milliseconds = curr_time.tv_usec / 1000;
++    /* Print the formatted time, in seconds, followed by a decimal point and the milliseconds. */
++    printf ("%s.%03u] ", time_string, milliseconds);
++}
++
++static void hci_dump_nuttx_stdout_packet(uint8_t packet_type, uint8_t in, uint8_t * packet, uint16_t len){
++    switch (packet_type){
++        case HCI_COMMAND_DATA_PACKET:
++            printf("CMD => ");
++            break;
++        case HCI_EVENT_PACKET:
++            printf("EVT <= ");
++            break;
++        case HCI_ACL_DATA_PACKET:
++#ifdef HCI_DUMP_STDOUT_MAX_SIZE_ACL
++            if (len > HCI_DUMP_STDOUT_MAX_SIZE_ACL){
++                printf("LOG -- ACL %s, size %u\n", in ? "in" : "out", len);
++                return;
++            }
++#endif
++            if (in) {
++                printf("ACL <= ");
++            } else {
++                printf("ACL => ");
++            }
++            break;
++        case HCI_SCO_DATA_PACKET:
++#ifdef HCI_DUMP_STDOUT_MAX_SIZE_SCO
++            if (len > HCI_DUMP_STDOUT_MAX_SIZE_SCO){
++                printf("LOG -- SCO %s, size %u\n", in ? "in" : "out", len);
++                return;
++            }
++#endif
++            if (in) {
++                printf("SCO <= ");
++            } else {
++                printf("SCO => ");
++            }
++            break;
++        case HCI_ISO_DATA_PACKET:
++#ifdef HCI_DUMP_STDOUT_MAX_SIZE_ISO
++            if (len > HCI_DUMP_STDOUT_MAX_SIZE_ISO){
++                printf("LOG -- ISO %s, size %u\n", in ? "in" : "out", len);
++                return;
++            }
++#endif
++            if (in) {
++                printf("ISO <= ");
++            } else {
++                printf("ISO => ");
++            }
++            break;
++        case LOG_MESSAGE_PACKET:
++            printf("LOG -- %s\n", (char*) packet);
++            return;
++        default:
++            return;
++    }
++    printf_hexdump(packet, len);
++}
++
++static void hci_dump_nuttx_nuttx_stdout_log_packet(uint8_t packet_type, uint8_t in, uint8_t *packet, uint16_t len) {
++    hci_dump_nuttx_stdout_timestamp();
++    hci_dump_nuttx_stdout_packet(packet_type, in, packet, len);
++}
++
++static void hci_dump_nuttx_stdout_log_message(int log_level, const char * format, va_list argptr){
++    UNUSED(log_level);
++    int len = vsnprintf(log_message_buffer, sizeof(log_message_buffer), format, argptr);
++    hci_dump_nuttx_nuttx_stdout_log_packet(LOG_MESSAGE_PACKET, 0, (uint8_t*) log_message_buffer, len);
++}
++
++const hci_dump_t * hci_dump_nuttx_stdout_get_instance(void){
++    static const hci_dump_t hci_dump_instance = {
++        // void (*reset)(void);
++        NULL,
++        // void (*log_packet)(uint8_t packet_type, uint8_t in, uint8_t *packet, uint16_t len);
++        &hci_dump_nuttx_nuttx_stdout_log_packet,
++        // void (*log_message)(int log_level, const char * format, va_list argptr);
++        &hci_dump_nuttx_stdout_log_message,
++    };
++    return &hci_dump_instance;
++}
++
++#endif /* ENABLE_PRINTF_HEXDUMP */
+diff --git a/platform/nuttx/hci_dump_nuttx_stdout.h b/platform/nuttx/hci_dump_nuttx_stdout.h
+new file mode 100644
+index 000000000..11b6ec8ac
+--- /dev/null
++++ b/platform/nuttx/hci_dump_nuttx_stdout.h
+@@ -0,0 +1,69 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++/*
++ * Dump HCI trace on stdout
++ */
++
++#ifndef HCI_DUMP_NUTTX_STDOUT_H
++#define HCI_DUMP_NUTTX_STDOUT_H
++
++#ifdef ENABLE_PRINTF_HEXDUMP
++
++#include <stdint.h>
++#include <stdarg.h>       // for va_list
++#include "hci_dump.h"
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++/**
++ * @brief Get HCI Dump NUTTX STDOUT Instance
++ * @return hci_dump_impl
++ */
++const hci_dump_t * hci_dump_nuttx_stdout_get_instance(void);
++
++/* API_END */
++
++#if defined __cplusplus
++}
++#endif
++
++#endif /* ENABLE_PRINTF_HEXDUMP */
++
++#endif // HCI_DUMP_NUTTX_STDOUT_H
+diff --git a/platform/nuttx/le_device_db_fs.c b/platform/nuttx/le_device_db_fs.c
+new file mode 100644
+index 000000000..b7e13d5b4
+--- /dev/null
++++ b/platform/nuttx/le_device_db_fs.c
+@@ -0,0 +1,429 @@
++/*
++ * Copyright (C) 2014 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#ifdef ENABLE_BLE
++
++#define BTSTACK_FILE__ "le_device_db_fs.c"
++
++#include <stdio.h>
++#include <string.h>
++
++#include "btstack_config.h"
++#include "btstack_debug.h"
++#include "ble/le_device_db.h"
++#include "ble/core.h"
++
++// Central Device db implemenation using static memory
++typedef struct le_device_memory_db {
++
++    // Identification
++    int addr_type;
++    bd_addr_t addr;
++    sm_key_t irk;
++
++    // Stored pairing information allows to re-establish an enncrypted connection
++    // with a peripheral that doesn't have any persistent memory
++    sm_key_t ltk;
++    uint16_t ediv;
++    uint8_t  rand[8];
++    uint8_t  key_size;
++    uint8_t  authenticated;
++    uint8_t  authorized;
++    uint8_t  secure_connection;
++
++#ifdef ENABLE_LE_SIGNED_WRITE
++    // Signed Writes by remote
++    sm_key_t remote_csrk;
++    uint32_t remote_counter;
++
++    // Signed Writes by us
++    sm_key_t local_csrk;
++    uint32_t local_counter;
++#endif
++
++} le_device_memory_db_t;
++
++#define LE_DEVICE_MEMORY_SIZE 20
++
++#ifndef LE_DEVICE_DB_PATH
++#ifdef _WIN32
++#define LE_DEVICE_DB_PATH ""
++#else
++#define LE_DEVICE_DB_PATH "/tmp/"
++#endif
++#endif
++
++#define DB_PATH_TEMPLATE (LE_DEVICE_DB_PATH "btstack_at_%s_le_device_db.txt")
++
++#ifdef ENABLE_LE_SIGNED_WRITE
++const  char * csv_header = "# addr_type, addr, irk, ltk, ediv, rand[8], key_size, authenticated, authorized, remote_csrk, remote_counter, local_csrk, local_counter, secure_connection";
++#else
++const  char * csv_header = "# addr_type, addr, irk, ltk, ediv, rand[8], key_size, authenticated, authorized, secure_connection";
++#endif
++
++static char db_path[sizeof(DB_PATH_TEMPLATE) - 2 + 17 + 1];
++
++static le_device_memory_db_t le_devices[LE_DEVICE_MEMORY_SIZE];
++
++static char * bd_addr_to_dash_str(bd_addr_t addr){
++    return bd_addr_to_str_with_delimiter(addr, '-');
++}
++
++static inline void write_delimiter(FILE * wFile){
++    fwrite(",", 1, 1, wFile);
++}
++static inline void write_hex_byte(FILE * wFile, uint8_t value){
++    char buffer[2];
++    buffer[0] = char_for_nibble(value >>   4);
++    buffer[1] = char_for_nibble(value & 0x0f);
++    fwrite(buffer, 2, 1, wFile);
++}
++
++static inline void write_str(FILE * wFile, const char * str){
++    fwrite(str, strlen(str), 1, wFile);
++    write_delimiter(wFile);
++}
++static void write_hex(FILE * wFile, const uint8_t * value, int len){
++    int i;
++    for (i = 0; i < len; i++){
++        write_hex_byte(wFile, value[i]);
++    }
++    write_delimiter(wFile);
++}
++static void write_value(FILE * wFile, uint32_t value, int len){
++    switch (len){
++        case 4:
++            write_hex_byte(wFile, value >> 24);
++        case 3:
++            write_hex_byte(wFile, value >> 16);
++        case 2:
++            write_hex_byte(wFile, value >> 8);
++        case 1:
++        default:
++            write_hex_byte(wFile, value);
++    }
++    write_delimiter(wFile);
++}
++
++static void le_device_db_store(void) {
++    int i;
++    // open file
++    FILE * wFile = fopen(db_path,"w+");
++    if (wFile == NULL) return;
++    fwrite(csv_header, strlen(csv_header), 1, wFile);
++    fwrite("\n", 1, 1, wFile);
++    for (i=0;i<LE_DEVICE_MEMORY_SIZE;i++){
++        if (le_devices[i].addr_type == BD_ADDR_TYPE_UNKNOWN) continue;
++        write_value(wFile, le_devices[i].addr_type, 1);
++        write_str(wFile,   bd_addr_to_str(le_devices[i].addr));
++        write_hex(wFile,   le_devices[i].irk, 16);
++        write_hex(wFile,   le_devices[i].ltk, 16);
++        write_value(wFile, le_devices[i].ediv, 2);
++        write_hex(wFile,   le_devices[i].rand, 8);
++        write_value(wFile, le_devices[i].key_size, 1);
++        write_value(wFile, le_devices[i].authenticated, 1);
++        write_value(wFile, le_devices[i].authorized, 1);
++#ifdef ENABLE_LE_SIGNED_WRITE
++        write_hex(wFile,   le_devices[i].remote_csrk, 16);
++        write_value(wFile, le_devices[i].remote_counter, 2);
++        write_hex(wFile,   le_devices[i].local_csrk, 16);
++        write_value(wFile, le_devices[i].local_counter, 2);
++#endif
++        write_value(wFile, le_devices[i].secure_connection, 1);
++        fwrite("\n", 1, 1, wFile);
++    }
++    fclose(wFile);
++}
++static void read_delimiter(FILE * wFile){
++    fgetc(wFile);
++}
++
++static uint8_t read_hex_byte(FILE * wFile){
++    int c = fgetc(wFile);
++    if (c == ':') {
++        c = fgetc(wFile);
++    }
++    int d = fgetc(wFile);
++    return nibble_for_char(c) << 4 | nibble_for_char(d);
++}
++
++static void read_hex(FILE * wFile, uint8_t * buffer, int len){
++    int i;
++    for (i=0;i<len;i++){
++        buffer[i] = read_hex_byte(wFile);
++    }
++    read_delimiter(wFile);
++}
++
++static uint32_t read_value(FILE * wFile, int len){
++    uint32_t res = 0;
++    int i;
++    for (i=0;i<len;i++){
++        res = res << 8 | read_hex_byte(wFile);
++    }
++    read_delimiter(wFile);
++    return res;
++}
++
++static void le_device_db_read(void){
++    // open file
++    FILE * wFile = fopen(db_path,"r");
++    if (wFile == NULL) return;
++    // skip header
++    while (true) {
++        int c = fgetc(wFile);
++        if (feof(wFile)) goto exit;
++        if (c == '\n') break;
++    }
++    // read entries
++    int i;
++    for (i=0 ; i<LE_DEVICE_MEMORY_SIZE ; i++){
++        memset(&le_devices[i], 0, sizeof(le_device_memory_db_t));
++        le_devices[i].addr_type = read_value(wFile, 1);
++        if (feof(wFile)){
++            le_devices[i].addr_type = BD_ADDR_TYPE_UNKNOWN;
++            break;
++        }
++        read_hex(wFile,   le_devices[i].addr, 6);
++        read_hex(wFile,   le_devices[i].irk, 16);
++        read_hex(wFile,   le_devices[i].ltk, 16);
++        le_devices[i].ediv = read_value(wFile, 2);
++        read_hex(wFile,   le_devices[i].rand, 8);
++        le_devices[i].key_size      = read_value(wFile, 1);
++        le_devices[i].authenticated = read_value(wFile, 1);
++        le_devices[i].authorized    = read_value(wFile, 1);
++#ifdef ENABLE_LE_SIGNED_WRITE
++        read_hex(wFile,   le_devices[i].remote_csrk, 16);
++        le_devices[i].remote_counter = read_value(wFile, 2);
++        read_hex(wFile,   le_devices[i].local_csrk, 16);
++        le_devices[i].local_counter = read_value(wFile, 2);
++#endif
++        // read next character and secure connection field if hex nibble follows
++        // (if not, we just read the newline)
++        int c = fgetc(wFile);
++        if (nibble_for_char(c) >= 0){
++            int d = fgetc(wFile);
++            le_devices[i].secure_connection = nibble_for_char(c) << 4 | nibble_for_char(d);
++            // read delimiter
++            read_delimiter(wFile);
++            // read newline
++            fgetc(wFile);
++        }
++    }
++exit:
++    fclose(wFile);
++}
++
++void le_device_db_init(void){
++    int i;
++    for (i=0;i<LE_DEVICE_MEMORY_SIZE;i++){
++        le_devices[i].addr_type = BD_ADDR_TYPE_UNKNOWN;
++    }
++    sprintf(db_path, DB_PATH_TEMPLATE, "00-00-00-00-00-00");
++}
++
++void le_device_db_set_local_bd_addr(bd_addr_t addr){
++    sprintf(db_path, DB_PATH_TEMPLATE, bd_addr_to_dash_str(addr));
++    log_info("le_device_db_fs: path %s", db_path);
++    le_device_db_read();
++    le_device_db_dump();
++}
++
++// @returns number of device in db
++int le_device_db_count(void){
++    int i;
++    int counter = 0;
++    for (i=0;i<LE_DEVICE_MEMORY_SIZE;i++){
++        if (le_devices[i].addr_type != BD_ADDR_TYPE_UNKNOWN) counter++;
++    }
++    return counter;
++}
++
++int le_device_db_max_count(void){
++    return LE_DEVICE_MEMORY_SIZE;
++}
++
++// free device
++void le_device_db_remove(int index){
++    le_devices[index].addr_type = BD_ADDR_TYPE_UNKNOWN;
++    le_device_db_store();
++}
++
++int le_device_db_add(int addr_type, bd_addr_t addr, sm_key_t irk){
++    int i;
++    int index = -1;
++    for (i=0;i<LE_DEVICE_MEMORY_SIZE;i++){
++         if (le_devices[i].addr_type == BD_ADDR_TYPE_UNKNOWN){
++            index = i;
++            break;
++         }
++    }
++
++    if (index < 0) return -1;
++
++    log_info("Central Device DB adding type %u - %s", addr_type, bd_addr_to_str(addr));
++    log_info_key("irk", irk);
++
++    memset(&le_devices[index], 0, sizeof(le_device_memory_db_t));
++
++    le_devices[index].addr_type = addr_type;
++    memcpy(le_devices[index].addr, addr, 6);
++    memcpy(le_devices[index].irk, irk, 16);
++#ifdef ENABLE_LE_SIGNED_WRITE
++    le_devices[index].remote_counter = 0;
++#endif
++    le_device_db_store();
++
++    return index;
++}
++
++
++// get device information: addr type and address
++void le_device_db_info(int index, int * addr_type, bd_addr_t addr, sm_key_t irk){
++    if (addr_type) *addr_type = le_devices[index].addr_type;
++    if (addr) memcpy(addr, le_devices[index].addr, 6);
++    if (irk) memcpy(irk, le_devices[index].irk, 16);
++}
++
++void le_device_db_encryption_set(int index, uint16_t ediv, uint8_t rand[8], sm_key_t ltk, int key_size, int authenticated, int authorized, int secure_connection){
++    log_info("LE Device DB set encryption for %u, ediv x%04x, key size %u, authenticated %u, authorized %u, secure connection %u",
++        index, ediv, key_size, authenticated, authorized, secure_connection);
++    le_device_memory_db_t * device = &le_devices[index];
++    device->ediv = ediv;
++    if (rand) memcpy(device->rand, rand, 8);
++    if (ltk) memcpy(device->ltk, ltk, 16);
++    device->key_size = key_size;
++    device->authenticated = authenticated;
++    device->authorized = authorized;
++    device->secure_connection = secure_connection;
++
++    le_device_db_store();
++}
++
++void le_device_db_encryption_get(int index, uint16_t * ediv, uint8_t rand[8], sm_key_t ltk, int * key_size, int * authenticated, int * authorized, int * secure_connection){
++    le_device_memory_db_t * device = &le_devices[index];
++    log_info("LE Device DB encryption for %u, ediv x%04x, keysize %u, authenticated %u, authorized %u, secure connection %u",
++        index, device->ediv, device->key_size, device->authenticated, device->authorized, device->secure_connection);
++    if (ediv) *ediv = device->ediv;
++    if (rand) memcpy(rand, device->rand, 8);
++    if (ltk)  memcpy(ltk, device->ltk, 16);
++    if (key_size) *key_size = device->key_size;
++    if (authenticated) *authenticated = device->authenticated;
++    if (authorized) *authorized = device->authorized;
++    if (secure_connection) *secure_connection = device->secure_connection;
++}
++
++#ifdef ENABLE_LE_SIGNED_WRITE
++
++// get signature key
++void le_device_db_remote_csrk_get(int index, sm_key_t csrk){
++    if (index < 0 || index >= LE_DEVICE_MEMORY_SIZE){
++        log_error("le_device_db_remote_csrk_get called with invalid index %d", index);
++        return;
++    }
++    if (csrk) memcpy(csrk, le_devices[index].remote_csrk, 16);
++}
++
++void le_device_db_remote_csrk_set(int index, sm_key_t csrk){
++    if (index < 0 || index >= LE_DEVICE_MEMORY_SIZE){
++        log_error("le_device_db_remote_csrk_set called with invalid index %d", index);
++        return;
++    }
++    if (csrk) memcpy(le_devices[index].remote_csrk, csrk, 16);
++
++    le_device_db_store();
++}
++
++void le_device_db_local_csrk_get(int index, sm_key_t csrk){
++    if (index < 0 || index >= LE_DEVICE_MEMORY_SIZE){
++        log_error("le_device_db_local_csrk_get called with invalid index %d", index);
++        return;
++    }
++    if (csrk) memcpy(csrk, le_devices[index].local_csrk, 16);
++}
++
++void le_device_db_local_csrk_set(int index, sm_key_t csrk){
++    if (index < 0 || index >= LE_DEVICE_MEMORY_SIZE){
++        log_error("le_device_db_local_csrk_set called with invalid index %d", index);
++        return;
++    }
++    if (csrk) memcpy(le_devices[index].local_csrk, csrk, 16);
++
++    le_device_db_store();
++}
++
++// query last used/seen signing counter
++uint32_t le_device_db_remote_counter_get(int index){
++    return le_devices[index].remote_counter;
++}
++
++// update signing counter
++void le_device_db_remote_counter_set(int index, uint32_t counter){
++    le_devices[index].remote_counter = counter;
++
++    le_device_db_store();
++}
++
++// query last used/seen signing counter
++uint32_t le_device_db_local_counter_get(int index){
++    return le_devices[index].local_counter;
++}
++
++// update signing counter
++void le_device_db_local_counter_set(int index, uint32_t counter){
++    le_devices[index].local_counter = counter;
++
++    le_device_db_store();
++}
++#endif
++
++void le_device_db_dump(void){
++    log_info("Central Device DB dump, devices: %d", le_device_db_count());
++    int i;
++    for (i=0;i<LE_DEVICE_MEMORY_SIZE;i++){
++        if (le_devices[i].addr_type == BD_ADDR_TYPE_UNKNOWN) continue;
++        log_info("%u: %u %s", i, le_devices[i].addr_type, bd_addr_to_str(le_devices[i].addr));
++        log_info_key("ltk", le_devices[i].ltk);
++        log_info_key("irk", le_devices[i].irk);
++#ifdef ENABLE_LE_SIGNED_WRITE
++        log_info_key("local csrk", le_devices[i].local_csrk);
++        log_info_key("remote csrk", le_devices[i].remote_csrk);
++#endif
++    }
++}
++
++#endif /* ENABLE_BLE */
+diff --git a/platform/nuttx/le_device_db_fs.h b/platform/nuttx/le_device_db_fs.h
+new file mode 100644
+index 000000000..d29e13af6
+--- /dev/null
++++ b/platform/nuttx/le_device_db_fs.h
+@@ -0,0 +1,62 @@
++/*
++ * Copyright (C) 2016 BlueKitchen GmbH
++ *
++ * Redistribution and use in source and binary forms, with or without
++ * modification, are permitted provided that the following conditions
++ * are met:
++ *
++ * 1. Redistributions of source code must retain the above copyright
++ *    notice, this list of conditions and the following disclaimer.
++ * 2. Redistributions in binary form must reproduce the above copyright
++ *    notice, this list of conditions and the following disclaimer in the
++ *    documentation and/or other materials provided with the distribution.
++ * 3. Neither the name of the copyright holders nor the names of
++ *    contributors may be used to endorse or promote products derived
++ *    from this software without specific prior written permission.
++ * 4. Any redistribution, use, or modification is done solely for
++ *    personal benefit and not for any commercial purpose or for
++ *    monetary gain.
++ *
++ * THIS SOFTWARE IS PROVIDED BY BLUEKITCHEN GMBH AND CONTRIBUTORS
++ * ``AS IS'' AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
++ * LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
++ * FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL BLUEKITCHEN
++ * GMBH OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
++ * INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
++ * BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
++ * OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
++ * AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
++ * OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
++ * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
++ * SUCH DAMAGE.
++ *
++ * Please inquire about commercial licensing options at
++ * contact@bluekitchen-gmbh.com
++ *
++ */
++
++#ifndef LE_DEVICE_DB_FS_H
++#define LE_DEVICE_DB_FS_H
++
++#ifdef ENABLE_BLE
++
++#include "ble/le_device_db.h"
++
++#if defined __cplusplus
++extern "C" {
++#endif
++
++/*
++ * @brief Get le device db implementation that stores bonding information in /tmp
++ */
++const le_device_db_t * le_device_db_fs_instance(void);
++
++/* API_END */
++
++#if defined __cplusplus
++}
++#endif
++
++#endif /* ENABLE_BLE */
++
++#endif // LE_DEVICE_DB_FS_H
+diff --git a/src/hci.c b/src/hci.c
+index bf238e087..bb8ab814e 100644
+--- a/src/hci.c
++++ b/src/hci.c
+@@ -1945,7 +1945,7 @@ static void hci_initializing_run(void){
+             hci_send_prepared_cmd_packet();
+             break;
+         case HCI_INIT_SEND_READ_LOCAL_NAME:
+-#ifdef ENABLE_CLASSIC
++#if defined(ENABLE_CLASSIC) && defined(ENABLE_LOCAL_NAME)
+             hci_send_cmd(&hci_read_local_name);
+             hci_stack->substate = HCI_INIT_W4_SEND_READ_LOCAL_NAME;
+             break;

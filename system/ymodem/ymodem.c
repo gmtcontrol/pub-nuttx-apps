@@ -60,7 +60,7 @@
 #define CAN           0x18  /* Two of these in succession aborts transfer */
 #define CRC           0x43  /* 'C' == 0x43, request 16-bit CRC */
 
-#define MAX_RETRIES   100
+#define MAX_RETRIES   30
 
 /****************************************************************************
  * Private Functions
@@ -138,7 +138,9 @@ static int ymodem_recv_packet(FAR struct ymodem_ctx_s *ctx)
         ctx->packet_size = ctx->custom_size;
         break;
       case EOT:
-        return -EAGAIN;
+        ymodem_debug("recv_packet: file received (size=%d)\n",
+                      ctx->file_length);
+        return (ctx->file_done) ? (0) : (-EAGAIN);
       case CAN:
         ret = ymodem_recv_buffer(ctx, ctx->header, 1);
         if (ret < 0)
@@ -226,6 +228,16 @@ recv_packet:
 
       ctx->header[0] = str ? NAK : CRC;
       goto recv_packet;
+    }
+
+  if (ctx->file_done)
+    {
+      /* Last file done, so the session also finished */
+
+      ymodem_debug("recv_file: session finished\n");
+      ctx->header[0] = ACK;
+      ymodem_send_buffer(ctx, ctx->header, 1);
+      return 0;
     }
 
   if ((total_seq & 0xff) - 1 == ctx->header[1])

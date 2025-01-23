@@ -116,7 +116,8 @@ static ssize_t ftpd_response(int sd, int timeout, FAR const char *fmt, ...)
 static int ftpd_dataopen(FAR struct ftpd_session_s *session);
 static int ftpd_dataclose(FAR struct ftpd_session_s *session);
 static FAR struct ftpd_server_s *ftpd_openserver(int port,
-                                                 sa_family_t family);
+                                                 sa_family_t family,
+                                                 FAR const char *ifname);
 
 /* Path helpers */
 
@@ -1141,7 +1142,8 @@ static int ftpd_dataclose(FAR struct ftpd_session_s *session)
  ****************************************************************************/
 
 static FAR struct ftpd_server_s *ftpd_openserver(int port,
-                                                 sa_family_t family)
+                                                 sa_family_t family,
+                                                 FAR const char *ifname)
 {
   FAR struct ftpd_server_s *server;
   socklen_t addrlen;
@@ -1214,6 +1216,25 @@ static FAR struct ftpd_server_s *ftpd_openserver(int port,
       setsockopt(server->sd, SOL_SOCKET, SO_REUSEADDR,
                  &reuse, sizeof(reuse));
     }
+
+#ifdef CONFIG_NET_BINDTODEVICE
+  /* Bind socket to interface, because UDP packets have to be sent to the
+   * broadcast address at a moment when it is not possible to decide the
+   * target network device using the local or remote address (which is,
+   * by definition and purpose of DHCP, undefined yet).
+   */
+
+  if ((ifname != NULL) && (ifname[0] != 0))
+    {
+      if (setsockopt(server->sd, SOL_SOCKET, SO_BINDTODEVICE,
+                    ifname, strlen(ifname)) < 0)
+        {
+          nerr("ERROR: setsockopt SO_BINDTODEVICE failed: %d\n", errno);
+          ftpd_close((FTPD_SESSION)server);
+          return NULL;
+        }
+    }
+#endif
 
   /* Bind the socket to the address */
 
@@ -4268,11 +4289,11 @@ static FAR void *ftpd_worker(FAR void *arg)
  *
  ****************************************************************************/
 
-FTPD_SESSION ftpd_open(int port, sa_family_t family)
+FTPD_SESSION ftpd_open(int port, sa_family_t family, FAR const char *ifname)
 {
   FAR struct ftpd_server_s *server;
 
-  server = ftpd_openserver(port, family);
+  server = ftpd_openserver(port, family, ifname);
 
   return (FTPD_SESSION)server;
 }

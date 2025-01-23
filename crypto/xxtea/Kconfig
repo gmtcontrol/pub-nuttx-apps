@@ -1,0 +1,17 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config XXTEA
+	bool "eXtended TEA Support"
+	---help---
+		This option enables the eXtended TEA cryptography library.
+
+if XXTEA
+
+config XXTEA_VERSION
+	string "XXTEA Version"
+	default "1.0.1"
+
+endif # XXTEA

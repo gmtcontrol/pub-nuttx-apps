@@ -1,14 +1,10 @@
 /****************************************************************************
  * apps/wireless/wapi/src/wapi.c
  *
- *   Copyright (C) 2011, 2017, 2019 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Largely and original work, but highly influenced by sampled code provided
- * with WAPI:
- *
- *   Copyright (c) 2010, Volkan YAZICI <volkan.yazici@gmail.com>
- *   All rights reserved.
+ * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-FileCopyrightText: 2011,2017,2019 Gregory Nutt. All rights reserved.
+ * SPDX-FileCopyrightText: 2010 Volkan YAZICI <volkan.yazici@gmail.com>
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions
@@ -262,6 +258,7 @@ static int wapi_show_cmd(int sock, int argc, FAR char **argv)
   FAR const char *ifname = argv[0];
   enum wapi_pta_prio_e pta_prio;
   enum wapi_freq_flag_e freq_flag;
+  struct ether_addr sta_mac[8];
   enum wapi_mode_e mode;
   struct ether_addr ap;
   struct in_addr addr;
@@ -270,6 +267,7 @@ static int wapi_show_cmd(int sock, int argc, FAR char **argv)
   int bitrate;
   int txpower;
   double freq;
+  int sta_num;
   int sense;
   int chan;
   int ret;
@@ -429,6 +427,21 @@ static int wapi_show_cmd(int sock, int argc, FAR char **argv)
   if (ret >= 0)
     {
       printf(" PTA prio: %d\n", pta_prio);
+    }
+
+  /* Get associated STAs */
+
+  ret = wapi_get_ap_stas(sock, ifname, &sta_num, sta_mac);
+  if (ret >= 0 && sta_num > 0)
+    {
+      for (int i = 0; i < sta_num; i++)
+        {
+          printf("   STA(%d): %02x:%02x:%02x:%02x:%02x:%02x\n",
+                i,
+                sta_mac[i].ether_addr_octet[0], sta_mac[i].ether_addr_octet[1],
+                sta_mac[i].ether_addr_octet[2], sta_mac[i].ether_addr_octet[3],
+                sta_mac[i].ether_addr_octet[4], sta_mac[i].ether_addr_octet[5]);
+        }
     }
 
   return 0;
@@ -614,6 +627,10 @@ static int wapi_psk_cmd(int sock, int argc, FAR char **argv)
 
       case WPA_ALG_CCMP:
         cipher = IW_AUTH_CIPHER_CCMP;
+        break;
+
+      case WPA_ALG_SAE:
+        cipher = IW_AUTH_CIPHER_AES_SAE;
         break;
 
       default:
@@ -911,6 +928,7 @@ static int wapi_country_cmd(int sock, int argc, FAR char **argv)
 
   if (argc == 1)
     {
+      memset(country, 0, sizeof(country));
       ret = wapi_get_country(sock, argv[0], country);
       if (ret >= 0)
         {

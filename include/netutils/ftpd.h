@@ -122,6 +122,7 @@ extern "C"
  *    port - The port that the server will listen to.
  *    family - The type of INET family to use when opening the socket.
  *    AF_INET and AF_INET6 are supported.
+ *    ifname - Socket interface name
  *
  * Returned Value:
  *   On success, a non-NULL handle is returned that can be used to reference
@@ -129,7 +130,7 @@ extern "C"
  *
  ****************************************************************************/
 
-FTPD_SESSION ftpd_open(int port, sa_family_t family);
+FTPD_SESSION ftpd_open(int port, sa_family_t family, FAR const char *ifname);
 
 /****************************************************************************
  * Name: ftpd_adduser

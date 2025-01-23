@@ -20,10 +20,10 @@
 
 include $(APPDIR)/Make.defs
 
-NIMBLE_UNPACKDIR = mynewt-nimble
-NIMBLE_ROOT = $(APPDIR)/wireless/bluetooth/nimble/$(NIMBLE_UNPACKDIR)
-CONFIG_NIMBLE_REF := $(patsubst "%",%,$(strip $(CONFIG_NIMBLE_REF)))
-NIMBLE_TAR := $(CONFIG_NIMBLE_REF).tar.gz
+NIMBLE_DIR  = mynewt-nimble
+NIMBLE_ROOT = $(APPDIR)/wireless/bluetooth/nimble/$(NIMBLE_DIR)
+NIMBLE_REF := $(patsubst "%",%,$(strip $(CONFIG_NIMBLE_REF)))
+NIMBLE_TAR := $(NIMBLE_REF).tar.gz
 NIMBLE_URL := https://github.com/apache/mynewt-nimble/archive/$(NIMBLE_TAR)
 
 ifneq ($(CONFIG_NIMBLE_PORTING_EXAMPLE),)
@@ -35,24 +35,25 @@ STACKSIZE = $(CONFIG_NIMBLE_PORTING_EXAMPLE_STACKSIZE)
 
 # NimBLE assumes this flag since it expects undefined macros to be zero value
 
-CFLAGS += -Wno-pointer-to-int-cast -Wno-undef
+CFLAGS += -Wno-pointer-to-int-cast -Wno-undef -Wno-unused-but-set-variable
 endif
 
 $(NIMBLE_TAR):
 	$(Q) curl -L $(NIMBLE_URL) -o $(NIMBLE_TAR)
 
-$(NIMBLE_UNPACKDIR): $(NIMBLE_TAR)
+$(NIMBLE_DIR): $(NIMBLE_TAR)
 	$(Q) tar zxf $(NIMBLE_TAR)
-	$(Q) mv mynewt-nimble-$(CONFIG_NIMBLE_REF) $(NIMBLE_UNPACKDIR)
-	$(Q) touch $(NIMBLE_UNPACKDIR)
+	$(Q) mv mynewt-nimble-$(NIMBLE_REF) $(NIMBLE_DIR)
+	$(Q) touch $(NIMBLE_DIR)
+	$(Q) patch -p1 -d $(NIMBLE_DIR) < 0001-hci-dev-index-fix.patch
 
 # Download and unpack tarball if no git repo found
-ifeq ($(wildcard $(NIMBLE_UNPACKDIR)/.git),)
-context:: $(NIMBLE_UNPACKDIR)
+ifeq ($(wildcard $(NIMBLE_DIR)/.git),)
+context:: $(NIMBLE_DIR)
 
 distclean::
 	$(call DELFILE,$(NIMBLE_TAR))
-	$(call DELDIR,$(NIMBLE_UNPACKDIR))
+	$(call DELDIR,$(NIMBLE_DIR))
 endif
 
 include $(APPDIR)/Application.mk

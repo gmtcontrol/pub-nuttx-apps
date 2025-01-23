@@ -84,3 +84,5 @@ ORB_DEFINE(sensor_gnss_measurement, struct sensor_gnss_measurement,
            sensor_gnss_measurement_format);
 ORB_DEFINE(sensor_gnss_satellite, struct sensor_gnss_satellite,
            sensor_gnss_satellite_format);
+ORB_DEFINE(sensor_gnss_raw, struct sensor_gnss_raw, 
+					 NULL);

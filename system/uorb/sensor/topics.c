@@ -139,6 +139,7 @@ static FAR const struct orb_metadata *g_sensor_list[] =
   ORB_ID(sensor_wake_gesture_uncal),
   ORB_ID(sensor_wrist_tilt),
   ORB_ID(sensor_wrist_tilt_uncal),
+  ORB_ID(sensor_gnss_raw),
   NULL,
 };
 

@@ -1,0 +1,31 @@
+diff --git a/nimble/transport/socket/src/ble_hci_socket.c b/nimble/transport/socket/src/ble_hci_socket.c
+index 84949245..41975cac 100644
+--- a/nimble/transport/socket/src/ble_hci_socket.c
++++ b/nimble/transport/socket/src/ble_hci_socket.c
+@@ -232,7 +232,7 @@ ble_hci_sock_acl_tx(struct os_mbuf *om)
+
+     addr.hci_family = AF_BLUETOOTH;
+     addr.hci_channel = HCI_CHANNEL_RAW;
+-    addr.hci_dev = s_ble_hci_device;
++    addr.hci_dev = 0;
+
+     memcpy(&addr, &addr, sizeof(struct sockaddr_hci));
+
+@@ -335,7 +335,7 @@ ble_hci_sock_cmdevt_tx(uint8_t *hci_ev, uint8_t h4_type)
+
+     addr.hci_family = AF_BLUETOOTH;
+     addr.hci_channel = HCI_CHANNEL_RAW;
+-    addr.hci_dev = s_ble_hci_device;
++    addr.hci_dev = 0;
+
+     memcpy(&addr, &addr, sizeof(struct sockaddr_hci));
+
+@@ -678,7 +678,7 @@ ble_hci_sock_config(void)
+
+     memset(&shci, 0, sizeof(shci));
+     shci.hci_family = AF_BLUETOOTH;
+-    shci.hci_dev = s_ble_hci_device;
++    shci.hci_dev = 0;
+     shci.hci_channel = HCI_CHANNEL_RAW;
+
+     if (ble_hci_sock_state.sock >= 0) {
