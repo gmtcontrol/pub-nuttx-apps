@@ -157,6 +157,7 @@ static void ev_handler(struct mg_connection *c, int ev, void *ev_data)
 
 int main(int argc, FAR char *argv[])
 {
+#if defined(CONFIG_NSH_NETINIT) && defined(CONFIG_NET_TCP) && defined(CONFIG_NET_UDP)
   struct sockaddr_in server;
   struct sockaddr_in client;
   unsigned char inbuf[256];
@@ -166,36 +167,6 @@ int main(int argc, FAR char *argv[])
   int nbytes;
   int optval;
 
-#ifndef CONFIG_NSH_NETINIT
-  /* We are running standalone (as opposed to a NSH built-in app). Therefore
-   * we need to initialize the network before we start.
-   */
-
-  struct in_addr addr;
-
-  /* Set up our host address */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_IPADDR);
-  netlib_set_ipv4addr("eth0", &addr);
-
-  /* Set up the default router address */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_DRIPADDR);
-  netlib_set_dripv4addr("eth0", &addr);
-
-  /* Setup the subnet mask */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_NETMASK);
-  netlib_set_ipv4netmask("eth0", &addr);
-
-  /* New versions of netlib_set_ipvXaddr will not bring the network up,
-   * So ensure the network is really up at this point.
-   */
-
-  netlib_ifup("eth0");
-#endif /* CONFIG_NSH_NETINIT */
-
-#if defined(CONFIG_NET_TCP) && defined(CONFIG_NET_UDP)
   printf("Starting Websocket Server\n");
 
   /* Create a new UDP socket */
@@ -284,21 +255,8 @@ int main(int argc, FAR char *argv[])
   /* free the allocated resources */
 
   mg_mgr_free(&mgr);
-#endif /* CONFIG_NET_TCP & CONFIG_NET_UDP */
+#endif /* CONFIG_NSH_NETINIT && CONFIG_NET_TCP && CONFIG_NET_UDP */
 
-#ifndef CONFIG_NSH_NETINIT
-  /* We are running standalone (as opposed to a NSH built-in app). Therefore
-   * we should not exit after httpd failure.
-   */
-
-  while (1)
-    {
-      sleep(3);
-      printf("mongoose_main: Still running\n");
-      fflush(stdout);
-    }
-
-#else /* CONFIG_NSH_NETINIT */
   /* We are running as a NSH built-in app.  Therefore we should exit.  This
    * allows to 'kill -9' the mongoose app, assuming it was started as a
    * background process.  For example:
@@ -313,8 +271,5 @@ int main(int argc, FAR char *argv[])
 
   printf("mongoose_main: Exiting\n");
   fflush(stdout);
-
-#endif /* CONFIG_NSH_NETINIT */
-
   return 0;
 }

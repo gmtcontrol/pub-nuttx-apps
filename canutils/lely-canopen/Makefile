@@ -26,135 +26,10 @@ include $(APPDIR)/Make.defs
 
 WD := ${shell echo $(CURDIR) | sed -e 's/ /\\ /g'}
 
-LELYCANOPEN_VERSION = $(patsubst "%",%,$(strip $(CONFIG_CANUTILS_LELYCANOPEN_VERSION)))
-
-LELYCANOPEN_TARBALL = lely-core-$(LELYCANOPEN_VERSION).tar.gz
-LELYCANOPEN_UNPACKNAME = lely-core-master-$(LELYCANOPEN_VERSION)
-LELYCANOPEN_SRCNAME = lely-core
-UNPACK ?= tar -zxf
-LELYCANOPEN_SRCDIR = $(WD)/$(LELYCANOPEN_SRCNAME)
-
-# CAN network object
-
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/can/buf.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/can/msg.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/can/vci.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/can/net.c
-
-# CANopen library
-
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/crc.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/dev.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/nmt.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/nmt_hb.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/nmt_srv.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/obj.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/pdo.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/sdo.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/ssdo.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/type.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/val.c
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_TIME),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/time.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_CSDO),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/csdo.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_DCF),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/dcf.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_EMCY),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/emcy.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_GW),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/gw.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_GW_TXT),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/gw_txt.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_LSS),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/lss.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_NMTBOOT),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/nmt_boot.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_NMTCFG),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/nmt_cfg.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_RPDO),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/rpdo.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_SDEV),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/sdev.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_SYNC),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/sync.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_TPDO),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/tpdo.c
-endif
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_WTM),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/co/wtm.c
-endif
-
-# utils
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_DIAG),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/diag.c
-endif
-
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/bits.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/bitset.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/cmp.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/config.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/config_ini.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/dllist.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/endian.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/errnum.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/frbuf.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/fwbuf.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/lex.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/membuf.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/pheap.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/print.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/rbtree.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/stop.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/time.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/util/ustring.c
-
-# Lely IO lib
-
-ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_IOLIB),y)
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/io/handle.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/io/io.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/io/pipe.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/io/poll.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/io2/posix/poll.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/io2/ctx.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/io/can.c
-CSRCS += $(LELYCANOPEN_SRCDIR)/src/can/socket.c
-endif
-
-# enable config.h
-
-CFLAGS += ${INCDIR_PREFIX}$(APPDIR)/include/canutils/lely
-CFLAGS += -DHAVE_CONFIG_H=1
-
-CFLAGS += -Wno-shadow -Wno-undef
+LELYCANOPEN_DIR  = lely-core
+LELYCANOPEN_VER  = $(patsubst "%",%,$(strip $(CONFIG_CANUTILS_LELYCANOPEN_VERSION)))
+LELYCANOPEN_TAR  = $(LELYCANOPEN_VER).tar.gz
+LELYCANOPEN_URL := https://gitlab.com/lely_industries/lely-core/-/archive/v$(LELYCANOPEN_TAR)
 
 MODULE = $(CONFIG_CANUTILS_LELYCANOPEN)
 
@@ -164,31 +39,28 @@ ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_TOOLS_COCTL),y)
 PROGNAME   = coctl
 PRIORITY   = $(CONFIG_CANUTILS_LELYCANOPEN_TOOLS_COCTL_PRIORITY)
 STACKSIZE  = $(CONFIG_CANUTILS_LELYCANOPEN_TOOLS_COCTL_STACKSIZE)
-MAINSRC    = $(LELYCANOPEN_SRCDIR)/tools/coctl.c
+MAINSRC    = $(WD)/$(LELYCANOPEN_DIR)/tools/coctl.c
 endif
+
+$(LELYCANOPEN_TAR):
+	@echo "Downloading: $(LELYCANOPEN_TAR)"
+	$(Q) curl -L $(LELYCANOPEN_URL) -o $(LELYCANOPEN_TAR)
+
+$(LELYCANOPEN_DIR): $(LELYCANOPEN_TAR)
+	@echo "Unpacking: $(LELYCANOPEN_TAR) -> $(LELYCANOPEN_DIR)"
+	$(Q) mkdir -p $(LELYCANOPEN_DIR)
+	$(Q) tar zxf $(LELYCANOPEN_TAR) -C $(LELYCANOPEN_DIR) --strip-components=1
+	$(Q) touch $(LELYCANOPEN_DIR)
+	$(Q) patch -p1 -d $(LELYCANOPEN_DIR) < 0001-NuttX-port.patch
 
 # Download and unpack tarball if no git repo found
-ifeq ($(wildcard $(LELYCANOPEN_SRCNAME)/.git),)
-$(LELYCANOPEN_TARBALL):
-	@echo "Downloading: $(LELYCANOPEN_TARBALL)"
-	$(Q) curl -L -O $(CONFIG_CANUTILS_LELYCANOPEN_URL)/$(LELYCANOPEN_TARBALL)
-
-$(LELYCANOPEN_SRCNAME): $(LELYCANOPEN_TARBALL)
-	@echo "Unpacking: $(LELYCANOPEN_TARBALL) -> $(LELYCANOPEN_UNPACKNAME)"
-	$(Q) $(UNPACK) $(LELYCANOPEN_TARBALL)
-	# Get the name of the directory created by the tar command
-	$(eval LELYCANOPEN_UNPACKNAME := $(shell ls -d lely-core-master*))
-	$(Q) mv $(LELYCANOPEN_UNPACKNAME) $(LELYCANOPEN_SRCNAME)
-	$(Q) cat 0001-NuttX-port.patch | patch -s -N -d $(LELYCANOPEN_SRCNAME) -p1
-	$(Q) echo "Patching $(LELYCANOPEN_SRCNAME)"
-endif
-
-context:: $(LELYCANOPEN_SRCNAME)
-
+ifeq ($(wildcard $(LELYCANOPEN_DIR)/.git),)
+context:: $(LELYCANOPEN_DIR)
 distclean::
-ifeq ($(wildcard $(LELYCANOPEN_SRCNAME)/.git),)
-	$(call DELDIR, $(LELYCANOPEN_SRCNAME))
-	$(call DELFILE, $(LELYCANOPEN_TARBALL))
+	$(call DELFILE,$(LELYCANOPEN_TAR))
+	$(call DELDIR,$(LELYCANOPEN_DIR))
 endif
+
+include $(APPDIR)/canutils/lely-canopen/Makefile.lely
 
 include $(APPDIR)/Application.mk

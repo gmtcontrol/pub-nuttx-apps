@@ -502,6 +502,7 @@ static void sigterm_action(int signo, siginfo_t *siginfo, void *arg)
 
 static int smart_daemon(int argc, FAR char *argv[])
 {
+#if defined(CONFIG_NSH_NETINIT) && defined(CONFIG_NET_TCP)
   struct httpd_data_s *priv = &g_httpd_data;
   struct sigaction act;
   bool gnss_enab = false;
@@ -516,36 +517,6 @@ static int smart_daemon(int argc, FAR char *argv[])
   pthread_attr_t attr;
   pthread_t tid;
 
-#ifndef CONFIG_NSH_NETINIT
-  /* We are running standalone (as opposed to a NSH built-in app). Therefore
-   * we need to initialize the network before we start.
-   */
-
-  struct in_addr addr;
-
-  /* Set up our host address */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_IPADDR);
-  netlib_set_ipv4addr("eth0", &addr);
-
-  /* Set up the default router address */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_DRIPADDR);
-  netlib_set_dripv4addr("eth0", &addr);
-
-  /* Setup the subnet mask */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_NETMASK);
-  netlib_set_ipv4netmask("eth0", &addr);
-
-  /* New versions of netlib_set_ipvXaddr will not bring the network up,
-   * So ensure the network is really up at this point.
-   */
-
-  netlib_ifup("eth0");
-#endif /* CONFIG_NSH_NETINIT */
-
-#if defined(CONFIG_NET_TCP)
   /* Clear the private data */
 
   memset(priv, 0, sizeof(struct httpd_data_s));
@@ -707,21 +678,8 @@ errout:
   g_httpd_serv.running = false;
   g_httpd_serv.stop    = false;
   g_httpd_serv.pid     = -1;
-#endif /* CONFIG_NET_TCP & CONFIG_NET_UDP */
+#endif /* CONFIG_NSH_NETINIT && CONFIG_NET_TCP */
 
-#ifndef CONFIG_NSH_NETINIT
-  /* We are running standalone (as opposed to a NSH built-in app). Therefore
-   * we should not exit after httpd failure.
-   */
-
-  while (1)
-    {
-      sleep(3);
-      printf("mongoose_main: Still running\n");
-      fflush(stdout);
-    }
-
-#else /* CONFIG_NSH_NETINIT */
   /* We are running as a NSH built-in app.  Therefore we should exit.  This
    * allows to 'kill -9' the mongoose app, assuming it was started as a
    * background process.  For example:
@@ -735,9 +693,6 @@ errout:
    */
 
   printf("mongoose_main: Exiting\n");
-
-#endif /* CONFIG_NSH_NETINIT */
-
   fflush(stdout);
   return exitcode;
 }

@@ -70,9 +70,9 @@
 /* --disable-canfd */
 
 #ifdef CONFIG_CANUTILS_LELYCANOPEN_CANFD
-#  define LELY_NO_CANFD 1
-#else
 #  define LELY_NO_CANFD 0
+#else
+#  define LELY_NO_CANFD 1
 #endif
 
 /* --disable-diag */

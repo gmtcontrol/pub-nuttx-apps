@@ -709,6 +709,9 @@ static void netinit_configure(void)
   netinit_set_ipaddrs("eth0");
   netinit_set_ipaddrs("eth1");
 
+  netinit_set_ipaddrs("can0");
+  netinit_set_ipaddrs("can1");
+
 #ifdef CONFIG_NET_BLUETOOTH
   netinit_set_ipaddrs("bnep0");
 #endif /* CONFIG_NET_BLUETOOTH */
@@ -717,8 +720,6 @@ static void netinit_configure(void)
 
 #ifndef CONFIG_NETINIT_NETLOCAL
   /* Bring the network(s) up. */
-
-	//netinit_net_bringup("eth0");
 
 #ifdef CONFIG_NET_BLUETOOTH
   netinit_net_bringup("bnep0");
@@ -772,8 +773,8 @@ static int netlink_monitor(void)
 
   /* Now loop, waiting for changes in link status */
 
-  bool eth0link = false;
-  bool eth0serv = false;
+  bool eth1link = false;
+  bool eth1serv = false;
 	bool dhcpd 		= false;
 	bool vbus;
 
@@ -785,34 +786,34 @@ static int netlink_monitor(void)
 
 			/* Check link status of the interface */
 
-			if ((ret == OK) && (vbus != eth0link))
+			if ((ret == OK) && (vbus != eth1link))
 				{
 					/* Update the link status */
 
-					if ((eth0link = vbus) != 0)
+					if ((eth1link = vbus) != 0)
 						{
 							/* Bring the network up */
 
-							netlib_ifup("eth0");
+							netlib_ifup("eth1");
 						} 
 					else 
 						{
 							/* Bring the network down */
 
-							netlib_ifdown("eth0");
+							netlib_ifdown("eth1");
 						}
 
 					/* Get the assigned IP address to the interface */
 
-					netlib_get_ipv4addr("eth0", &addr);
+					netlib_get_ipv4addr("eth1", &addr);
 
 					/* Has the ethernet services started ? */
 
-					if (!eth0serv)
+					if (!eth1serv)
 						{
 							/* Link is up ? */
 
-							if (eth0link && (addr.s_addr != 0))
+							if (eth1link && (addr.s_addr != 0))
 								{
 									/* Local DHCP service */
 
@@ -821,7 +822,7 @@ static int netlink_monitor(void)
 											FAR char *dhcpd_argv[]=
 											{
 												"dhcpd_start",
-												"eth0",
+												"eth1",
 												NULL
 											};
 
@@ -834,7 +835,7 @@ static int netlink_monitor(void)
 									FAR char *ftpd_argv[]=
 									{
 										"ftpd_start", 
-										"-i", "eth0",
+										"-i", "eth1",
 										"-4",
 										NULL
 									};
@@ -854,20 +855,20 @@ static int netlink_monitor(void)
 
 									/* Ethernet services started */
 
-									eth0serv = true;
+									eth1serv = true;
 								}
 						}
 					else
 						{
 							/* Check for link down state */
 
-							if (!eth0link)
+							if (!eth1link)
 								{
 									/* Stop all services */
 
 									ftpd_stop_main(0, NULL);
 									systemd_stop_main(0, NULL);
-									eth0serv = false;
+									eth1serv = false;
 								}
 						}
 				}
