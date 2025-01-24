@@ -15,12 +15,27 @@ struct network_status_s
   struct
   {
     uint16_t link;
+  } eth1;
+
+  struct
+  {
+    uint16_t link;
   } wlan0;
 
   struct
   {
     uint16_t link;
   } wlan1;
+
+  struct
+  {
+    uint16_t link;
+  } can0;
+
+  struct
+  {
+    uint16_t link;
+  } can1;
 };
 
 /* uORB decleration */

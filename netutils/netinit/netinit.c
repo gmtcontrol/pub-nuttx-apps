@@ -71,6 +71,9 @@
 #include "netutils/netinit.h"
 #include "nshlib/nshlib.h"
 
+#include <uORB/uORB.h>
+#include <network_status.h>
+
 #ifdef CONFIG_NETUTILS_NETINIT
 
 /****************************************************************************
@@ -740,8 +743,10 @@ static void netinit_configure(void)
 #ifdef CONFIG_NETLINK_MONITOR
 static int netlink_monitor(void)
 {
+  struct network_status_s net_stat;
   struct in_addr addr;
   int fd, sd, ret;
+  int pub;
 
   ninfo("Entry\n");
 
@@ -770,6 +775,11 @@ static int netlink_monitor(void)
       nerr("ERROR: Failed to open VBUS gpio: %d\n", ret);
       goto errout;
     }
+
+  /* Create the publish file for network status */
+
+  pub = orb_advertise(ORB_ID(network_status), 0);
+	memset(&net_stat, 0, sizeof(net_stat));
 
   /* Now loop, waiting for changes in link status */
 
@@ -872,6 +882,19 @@ static int netlink_monitor(void)
 								}
 						}
 				}
+
+      /* Prepare the uORB data */
+
+      net_stat.eth1.link  = eth1link;
+
+      /* Check the publish topic validity */
+
+      if (pub >= 0)
+        {
+          /* Publish the data */
+
+          orb_publish(ORB_ID(network_status), pub, &net_stat);
+        }
 
       /* Suspend the for 500ms */
 
