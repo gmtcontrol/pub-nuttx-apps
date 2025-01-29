@@ -1,5 +1,5 @@
 ############################################################################
-# apps/gmtcnt/topics/Makefile
+# apps/gmtcnt/fpga/Makefile
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -20,16 +20,22 @@
 
 include $(APPDIR)/Make.defs
 
-ifneq ($(CONFIG_GMTCNT_UORB_SYSTEM_STATUS),)
-CSRCS += system_status.c
+# FPGA loader application info
+
+MAINSRC 	= 
+PROGNAME  = 
+PRIORITY  = $(CONFIG_GMTCNT_FPGA_PRIORITY)
+STACKSIZE = $(CONFIG_GMTCNT_FPGA_STACKSIZE)
+MODULE 		= $(CONFIG_GMTCNT_FPGA)
+
+ifneq ($(CONFIG_GMTCNT_FPGA_LOAD),)
+MAINSRC  += fpga_load_main.c
+PROGNAME += fpga_load
 endif
 
-ifneq ($(CONFIG_GMTCNT_UORB_NETWORK_STATUS),)
-CSRCS += network_status.c
-endif
-
-ifneq ($(CONFIG_GMTCNT_UORB_BTSTACK_STATUS),)
-CSRCS += btstack_status.c
+ifneq ($(CONFIG_GMTCNT_FPGA_CTRL),)
+MAINSRC  += fpga_ctrl_main.c
+PROGNAME += fpga_ctrl
 endif
 
 include $(APPDIR)/Application.mk

@@ -35,6 +35,7 @@
 
 #include <nuttx/timers/pwm.h>
 
+#include <system_status.h>
 #include <network_status.h>
 
 /****************************************************************************
@@ -54,8 +55,9 @@
  * Private Data
  ****************************************************************************/
 
-static bool g_led_service_started;
+static bool g_led_service_started = false;
 
+static struct system_status_s  system_stat;
 static struct network_status_s network_stat;
 static struct pwm_info_s led_info;
 
@@ -195,6 +197,7 @@ static int led_effect(int fd, uint8_t mask, uint16_t duty, bool update, struct p
 static int leds_service(int argc, char *argv[])
 {
   int sub_network;
+	int sub_system;
   bool updated;
   int fd;
 
@@ -216,6 +219,9 @@ static int leds_service(int argc, char *argv[])
 
   /* Subscribe the uORB topics */
 
+  memset(&system_stat, 0, sizeof(struct system_status_s));
+  sub_system  = orb_subscribe(ORB_ID(system_status));
+
   memset(&network_stat, 0, sizeof(struct network_status_s));
   sub_network  = orb_subscribe(ORB_ID(network_status));
 
@@ -224,9 +230,7 @@ static int leds_service(int argc, char *argv[])
   led_animation(fd, true, &led_info);
   led_info.frequency = 200;
 
-  uint8_t  effect_mask = LED_MASK_CAN | \
-												 LED_MASK_USB | \
-												 LED_MASK_232;
+  uint8_t  effect_mask = LED_MASK_USB;
   uint16_t effect_wait = LED_EFFECT_WAIT;
   uint16_t update_wait = 1;
   uint32_t duty = 100;
@@ -281,11 +285,30 @@ static int leds_service(int argc, char *argv[])
 
           if (orb_copy(ORB_ID(network_status), sub_network, &network_stat) == OK)
             {
-              /* Update the LED animation according to status */
-
 							/* Ethernet link status LED */
 
-							if (network_stat.eth0.link)
+							if (network_stat.eth0.link || network_stat.eth1.link)
+								{
+									effect_mask |= LED_MASK_232;
+								}
+							else
+								{
+									effect_mask &= ~LED_MASK_232;
+								}
+            }
+        }
+
+      /* Check the system status topic */
+
+      if ((orb_check(sub_system, &updated) == OK) && updated)
+        {
+          /* Get the published data */
+
+          if (orb_copy(ORB_ID(system_status), sub_system, &system_stat) == OK)
+            {
+							/* FPGA status LED */
+
+							if (system_stat.fpga_stat != 0)
 								{
 									effect_mask |= LED_MASK_CAN;
 								}
@@ -293,21 +316,10 @@ static int leds_service(int argc, char *argv[])
 								{
 									effect_mask &= ~LED_MASK_CAN;
 								}
-
-							/* RNDIS link status LED */
-
-							if (network_stat.eth1.link)
-								{
-									effect_mask |= LED_MASK_USB;
-								}
-							else
-								{
-									effect_mask &= ~LED_MASK_USB;
-								}
             }
-        }
+        }				
 
-      /* Wait for a 10ms */
+      /* Wait for 10ms */
 
       usleep(10 * 1000L);
     }

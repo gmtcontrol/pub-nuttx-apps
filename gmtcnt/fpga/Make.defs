@@ -1,5 +1,5 @@
 ############################################################################
-# apps/gmtcnt/topics/Makefile
+# apps/gmtcnt/fpga/Make.defs
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -18,18 +18,6 @@
 #
 ############################################################################
 
-include $(APPDIR)/Make.defs
-
-ifneq ($(CONFIG_GMTCNT_UORB_SYSTEM_STATUS),)
-CSRCS += system_status.c
+ifneq ($(CONFIG_GMTCNT_FPGA),)
+CONFIGURED_APPS += $(APPDIR)/gmtcnt/fpga
 endif
-
-ifneq ($(CONFIG_GMTCNT_UORB_NETWORK_STATUS),)
-CSRCS += network_status.c
-endif
-
-ifneq ($(CONFIG_GMTCNT_UORB_BTSTACK_STATUS),)
-CSRCS += btstack_status.c
-endif
-
-include $(APPDIR)/Application.mk

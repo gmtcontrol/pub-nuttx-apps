@@ -5,12 +5,16 @@ config GMTCNT_UORB_TOPICS
 
 if GMTCNT_UORB_TOPICS
 
+config GMTCNT_UORB_SYSTEM_STATUS
+	bool "System Status"
+	default y
+
 config GMTCNT_UORB_NETWORK_STATUS
 	bool "Network Status"
 	default y
 
 config GMTCNT_UORB_BTSTACK_STATUS
 	bool "BTstack Status"
-	default y
+	default n
 
 endif
