@@ -107,7 +107,7 @@ config NETINIT_RETRYMSEC
 endif # NETINIT_MONITOR
 
 config NETLINK_MONITOR
-	bool "Monitor custom state"
+	bool "Monitor link status"
 	default n
 	depends on NETDEV_PHY_IOCTL && NET_UDP
 	---help---

@@ -301,9 +301,11 @@ int main(int argc, FAR char *argv[])
   if (!g_ftpdglob.running)
     {
       printf("Starting the FTP daemon\n");
-      g_ftpdglob.pid = task_create("ftp_daemon", CONFIG_EXAMPLES_FTPD_PRIO,
+      g_ftpdglob.pid = task_create("ftp_daemon", 
+																	 CONFIG_EXAMPLES_FTPD_PRIORITY,
                                    CONFIG_EXAMPLES_FTPD_STACKSIZE,
-                                   ftpd_daemon, argv);
+                                   ftpd_daemon,
+																	 argv);
       if (g_ftpdglob.pid < 0)
         {
           printf("Failed to start the FTP daemon: %d\n", errno);

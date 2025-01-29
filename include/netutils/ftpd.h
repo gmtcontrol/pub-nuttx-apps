@@ -80,6 +80,10 @@
 #  define CONFIG_FTPD_WORKERSTACKSIZE 2048
 #endif
 
+#ifndef CONFIG_FTPD_WORKERPRIORITY
+#  define CONFIG_FTPD_WORKERPRIORITY 	100
+#endif
+
 /* Interface definitions ****************************************************/
 
 #define FTPD_ACCOUNTFLAG_NONE    (0)

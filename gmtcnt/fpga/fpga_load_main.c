@@ -72,9 +72,9 @@ static int fpga_loader(int s_argc, char **s_argv)
 	struct system_status_s sys_stat;
 	static char f_name[PATH_MAX]={0};
 	char d_name[16]={0};
-  int opt, len, pub;
-	int fd_dev;
-	int fd_bit;
+  int opt, len;
+	int fd_dev=-1;
+	int fd_bit=-1;
 	char *buf;
 
   /* Indicate that we are running */
@@ -151,11 +151,6 @@ static int fpga_loader(int s_argc, char **s_argv)
 			goto errout;
 		}
 
-  /* Create the publish file for system status */
-
-  pub = orb_advertise(ORB_ID(system_status), 0);
-	memset(&sys_stat, 0, sizeof(sys_stat));
-
 	/* Read from the bitstream file */
 
 	while ((len = read(fd_bit, buf, CONFIG_GMTCNT_FPGA_BUFSIZE)) > 0)
@@ -182,14 +177,19 @@ errout:
 
 	if (close(fd_dev) == OK)
 		{
-			/* Update system status */
+			/* Create the publish file for system status */
 
-			sys_stat.fpga_stat = 1;
+			int pub = orb_advertise(ORB_ID(system_status), 0);
+			memset(&sys_stat, 0, sizeof(sys_stat));
 
       /* Check the publish topic validity */
 
       if (pub >= 0)
         {
+					/* Update system status */
+
+					sys_stat.fpga_stat = 1;
+
           /* Publish the data */
 
           orb_publish(ORB_ID(system_status), pub, &sys_stat);

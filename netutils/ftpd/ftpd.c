@@ -190,7 +190,7 @@ static int ftpd_command(FAR struct ftpd_session_s *session);
 /* Worker thread */
 
 static int ftpd_startworker(pthread_startroutine_t handler, FAR void *arg,
-                            size_t stacksize);
+                            size_t stacksize, int priority);
 static void ftpd_freesession(FAR struct ftpd_session_s *session);
 static void ftpd_workersetup(FAR struct ftpd_session_s *session);
 static FAR void *ftpd_worker(FAR void *arg);
@@ -4007,8 +4007,9 @@ static int ftpd_command(FAR struct ftpd_session_s *session)
  ****************************************************************************/
 
 static int ftpd_startworker(pthread_startroutine_t handler, FAR void *arg,
-                            size_t stacksize)
+                            size_t stacksize, int priority)
 {
+	struct sched_param sparam;
   pthread_t threadid;
   pthread_attr_t attr;
   int ret;
@@ -4028,6 +4029,16 @@ static int ftpd_startworker(pthread_startroutine_t handler, FAR void *arg,
   if (ret != 0)
     {
       nerr("ERROR: pthread_attr_setstacksize() failed: %d\n", ret);
+      goto errout_with_attr;
+    }
+
+	/* Set the priority of the thread */
+
+	sparam.sched_priority = priority;
+	ret = pthread_attr_setschedparam(&attr, &sparam);
+  if (ret != 0)
+    {
+      nerr("ERROR: pthread_attr_setschedparam() failed: %d\n", ret);
       goto errout_with_attr;
     }
 
@@ -4482,7 +4493,8 @@ int ftpd_session(FTPD_SESSION handle, int timeout)
   /* And create a worker thread to service the session */
 
   ret = ftpd_startworker(ftpd_worker, (FAR void *)session,
-                         CONFIG_FTPD_WORKERSTACKSIZE);
+                         CONFIG_FTPD_WORKERSTACKSIZE,
+												 CONFIG_FTPD_WORKERPRIORITY);
   if (ret < 0)
     {
       nerr("ERROR: ftpd_startworker() failed: %d\n", ret);
