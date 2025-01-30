@@ -89,6 +89,8 @@ extern int ftpd_stop_main     (int argc, FAR char *argv[]);
 extern int dhcpd_start_main		(int argc, FAR char *argv[]);
 extern int dhcpd_stop_main 		(int argc, FAR char *argv[]);
 
+extern int renew_main					(int argc, FAR char *argv[]);
+
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
@@ -227,12 +229,12 @@ extern int dhcpd_stop_main 		(int argc, FAR char *argv[]);
  */
 
 #ifdef CONFIG_SYSTEM_TIME64
-#  define LONG_TIME_SEC    (60*60)   /* One hour in seconds */
+#  define LONG_TIME_SEC    (2)   		/* 2 seconds */
 #else
-#  define LONG_TIME_SEC    (5*60)    /* Five minutes in seconds */
+#  define LONG_TIME_SEC    (2)    	/* 2 seconds */
 #endif
 
-#define SHORT_TIME_SEC     (2)       /* 2 seconds */
+#define SHORT_TIME_SEC     (2)    	/* 2 seconds */
 
 #define VBUS_DEVPATH 				"/dev/gpio0"
 
@@ -240,7 +242,8 @@ extern int dhcpd_stop_main 		(int argc, FAR char *argv[]);
  * Private Data
  ****************************************************************************/
 
-#ifdef CONFIG_NETINIT_MONITOR
+#if defined(CONFIG_NETINIT_MONITOR) || \
+	 (defined(CONFIG_NETLINK_MONITOR) && defined(CONFIG_ARCH_PHY_INTERRUPT))
 static sem_t g_notify_sem;
 #endif
 
@@ -732,6 +735,36 @@ static void netinit_configure(void)
 }
 
 /****************************************************************************
+ * Name: netinit_signal
+ *
+ * Description:
+ *   This signal handler responds to changes in PHY status.
+ *
+ ****************************************************************************/
+
+#if defined(CONFIG_NETINIT_MONITOR) || \
+	 (defined(CONFIG_NETLINK_MONITOR) && defined(CONFIG_ARCH_PHY_INTERRUPT))
+static void netinit_signal(int signo, FAR siginfo_t *siginfo,
+                           FAR void *context)
+{
+  int semcount;
+  int ret;
+
+  /* What is the count on the semaphore?  Don't over-post */
+
+  ret = sem_getvalue(&g_notify_sem, &semcount);
+  ninfo("Entry: semcount=%d\n", semcount);
+
+  if (ret == OK && semcount <= 0)
+    {
+      sem_post(&g_notify_sem);
+    }
+
+  ninfo("Exit\n");
+}
+#endif
+
+/****************************************************************************
  * Name: netlink_monitor
  *
  * Description:
@@ -743,12 +776,24 @@ static void netinit_configure(void)
 #ifdef CONFIG_NETLINK_MONITOR
 static int netlink_monitor(void)
 {
+  struct timespec abstime;
+  struct timespec reltime;
+  struct sigaction act;
+  struct sigaction oact;
+  struct ifreq ifr;
+
   struct network_status_s net_stat;
   struct in_addr addr;
   int fd, sd, ret;
   int pub;
 
   ninfo("Entry\n");
+
+  /* Initialize the notification semaphore */
+
+#ifdef CONFIG_ARCH_PHY_INTERRUPT
+  DEBUGVERIFY(sem_init(&g_notify_sem, 0, 0));
+#endif
 
   /* Get a socket descriptor that we can use to communicate with the network
    * interface driver.
@@ -776,6 +821,23 @@ static int netlink_monitor(void)
       goto errout;
     }
 
+#ifdef CONFIG_ARCH_PHY_INTERRUPT
+  /* Attach a signal handler so that we do not lose PHY events */
+
+  act.sa_sigaction = netinit_signal;
+  act.sa_flags = SA_SIGINFO;
+
+  ret = sigaction(CONFIG_NETINIT_SIGNO, &act, &oact);
+  if (ret < 0)
+    {
+      ret = -errno;
+      DEBUGASSERT(ret < 0);
+
+      nerr("ERROR: sigaction() failed: %d\n", ret);
+      goto errout_with_socket;
+    }
+#endif /* CONFIG_ARCH_PHY_INTERRUPT */
+
   /* Create the publish file for network status */
 
   pub = orb_advertise(ORB_ID(network_status), 0);
@@ -783,6 +845,8 @@ static int netlink_monitor(void)
 
   /* Now loop, waiting for changes in link status */
 
+  bool eth0link = false;
+  bool eth0serv = false;
   bool eth1link = false;
   bool eth1serv = false;
 	bool dhcpd 		= false;
@@ -790,6 +854,185 @@ static int netlink_monitor(void)
 
   while (1)
     {
+			/* Configure to receive a signal on changes in link status */
+
+			memset(&ifr, 0, sizeof(struct ifreq));
+			strlcpy(ifr.ifr_name, "eth0", IFNAMSIZ);
+
+#ifdef CONFIG_ARCH_PHY_INTERRUPT
+			ifr.ifr_mii_notify_event.sigev_notify = SIGEV_SIGNAL;
+			ifr.ifr_mii_notify_event.sigev_signo  = CONFIG_NETINIT_SIGNO;
+
+			/* Notify the driver that we want link status changes */
+
+			ret = ioctl(sd, SIOCMIINOTIFY, (unsigned long)&ifr);
+			if (ret < 0)
+				{
+					ret = -errno;
+					DEBUGASSERT(ret < 0);
+
+					nerr("ERROR: ioctl(SIOCMIINOTIFY) failed: %d\n", ret);
+					goto errout_with_sigaction;
+				}
+#endif /* CONFIG_ARCH_PHY_INTERRUPT */
+
+      /* Does the driver think that the link is up or down? */
+
+      ret = ioctl(sd, SIOCGIFFLAGS, (unsigned long)&ifr);
+      if (ret < 0)
+        {
+          ret = -errno;
+          DEBUGASSERT(ret < 0);
+
+          nerr("ERROR: ioctl(SIOCGIFFLAGS) failed: %d\n", ret);
+          goto errout_with_notification;
+        }
+
+      eth0link = ((ifr.ifr_flags & IFF_UP) != 0);
+
+      /* Get the current PHY address in use.  This probably does not change,
+       * but just in case...
+       *
+       * NOTE: We are assuming that the network device name is preserved in
+       * the ifr structure.
+       */
+
+      ret = ioctl(sd, SIOCGMIIPHY, (unsigned long)&ifr);
+      if (ret < 0)
+        {
+          ret = -errno;
+          DEBUGASSERT(ret < 0);
+
+          nerr("ERROR: ioctl(SIOCGMIIPHY) failed: %d\n", ret);
+          goto errout_with_notification;
+        }
+
+      /* Read the PHY status register */
+
+      ifr.ifr_mii_reg_num = MII_MSR;
+      ret = ioctl(sd, SIOCGMIIREG, (unsigned long)&ifr);
+      if (ret < 0)
+        {
+          ret = -errno;
+          DEBUGASSERT(ret < 0);
+
+          nerr("ERROR: ioctl(SIOCGMIIREG) failed: %d\n", ret);
+          goto errout_with_notification;
+        }
+
+      ninfo("%s: eth0link=%d PHY address=%02x MSR=%04x\n",
+            ifr.ifr_name, eth0link, ifr.ifr_mii_phy_id, ifr.ifr_mii_val_out);
+
+      /* Check for link up or down */
+
+      if ((ifr.ifr_mii_val_out & MII_MSR_LINKSTATUS) != 0)
+        {
+          /* Link up... does the drive think that the link is up? */
+
+          if (!eth0link)
+            {
+              /* No... We just transitioned from link down to link up.
+               * Bring the link up.
+               */
+
+              ninfo("Bringing the link up\n");
+
+              ifr.ifr_flags = IFF_UP;
+              ret = ioctl(sd, SIOCSIFFLAGS, (unsigned long)&ifr);
+              if (ret < 0)
+                {
+                  ret = -errno;
+                  DEBUGASSERT(ret < 0);
+
+                  nerr("ERROR: ioctl(SIOCSIFFLAGS) failed: %d\n", ret);
+                  goto errout_with_notification;
+                }
+
+#ifdef CONFIG_NET_ICMPv6_AUTOCONF
+              /* Perform ICMPv6 auto-configuration */
+
+              netlib_icmpv6_autoconfiguration(ifr.ifr_name);
+#endif
+              /* And wait for a short delay.  We will want to recheck the
+               * link status again soon.
+               */
+
+              reltime.tv_sec  = SHORT_TIME_SEC;
+              reltime.tv_nsec = 0;
+
+							/* Renew the IP address */
+
+							FAR char *renew_argv[]=
+							{
+								"renew",
+								"eth0",
+								NULL
+							};
+							renew_main(2, renew_argv);
+            }
+          else
+            {
+              /* The link is still up.  Take a long, well-deserved rest */
+
+#ifdef CONFIG_ARCH_PHY_INTERRUPT
+              reltime.tv_sec  = LONG_TIME_SEC;
+#else
+							reltime.tv_sec  = SHORT_TIME_SEC;
+#endif /* CONFIG_ARCH_PHY_INTERRUPT */
+
+              reltime.tv_nsec = 0;
+            }
+        }
+      else
+        {
+          /* Link down... Was the driver link state already down? */
+
+          if (eth0link)
+            {
+              /* No... we just transitioned from link up to link down.  Take
+               * the link down.
+               */
+
+              ninfo("Taking the link down\n");
+
+              ifr.ifr_flags = 0;
+              ret = ioctl(sd, SIOCSIFFLAGS, (unsigned long)&ifr);
+              if (ret < 0)
+                {
+                  ret = -errno;
+                  DEBUGASSERT(ret < 0);
+
+                  nerr("ERROR: ioctl(SIOCSIFFLAGS) failed: %d\n", ret);
+                  goto errout_with_notification;
+                }
+            }
+
+          /* In either case, wait for the short, configurable delay */
+
+          reltime.tv_sec  = CONFIG_NETINIT_RETRYMSEC / 1000;
+          reltime.tv_nsec = (CONFIG_NETINIT_RETRYMSEC % 1000) * 1000000;
+        }
+
+      /* Now wait for either the semaphore to be posted for a timed-out to
+       * occur.
+       */
+
+      sched_lock();
+      DEBUGVERIFY(clock_gettime(CLOCK_REALTIME, &abstime));
+
+      abstime.tv_sec  += reltime.tv_sec;
+      abstime.tv_nsec += reltime.tv_nsec;
+      if (abstime.tv_nsec >= 1000000000)
+        {
+          abstime.tv_sec++;
+          abstime.tv_nsec -= 1000000000;
+        }
+
+			/* Wait for the semaphore to be posted */
+
+      sem_timedwait(&g_notify_sem, &abstime);
+      sched_unlock();
+
 			/* Read the VBUS status */
 
 			ret = ioctl(fd, GPIOC_READ, (unsigned long)((uintptr_t)&vbus));
@@ -885,6 +1128,7 @@ static int netlink_monitor(void)
 
       /* Prepare the uORB data */
 
+      net_stat.eth0.link  = eth0link;
       net_stat.eth1.link  = eth1link;
 
       /* Check the publish topic validity */
@@ -895,48 +1139,19 @@ static int netlink_monitor(void)
 
           orb_publish(ORB_ID(network_status), pub, &net_stat);
         }
-
-      /* Suspend the for 500ms */
-
-      nxsig_usleep(500 * 1000);
     }
 
-  ninfo("Exit\n");
-
+errout_with_notification:
+  ifr.ifr_mii_notify_event.sigev_notify = SIGEV_NONE;
+  ioctl(sd, SIOCMIINOTIFY, (unsigned long)&ifr);
+errout_with_sigaction:
+  sigaction(CONFIG_NETINIT_SIGNO, &oact, NULL);
+errout_with_socket:
   close(sd);
-  close(fd);
 errout:
+  close(fd);
   nerr("ERROR: Aborting\n");
   return ret;
-}
-#endif
-
-/****************************************************************************
- * Name: netinit_signal
- *
- * Description:
- *   This signal handler responds to changes in PHY status.
- *
- ****************************************************************************/
-
-#ifdef CONFIG_NETINIT_MONITOR
-static void netinit_signal(int signo, FAR siginfo_t *siginfo,
-                           FAR void *context)
-{
-  int semcount;
-  int ret;
-
-  /* What is the count on the semaphore?  Don't over-post */
-
-  ret = sem_getvalue(&g_notify_sem, &semcount);
-  ninfo("Entry: semcount=%d\n", semcount);
-
-  if (ret == OK && semcount <= 0)
-    {
-      sem_post(&g_notify_sem);
-    }
-
-  ninfo("Exit\n");
 }
 #endif
 
@@ -944,7 +1159,7 @@ static void netinit_signal(int signo, FAR siginfo_t *siginfo,
  * Name: netinit_monitor
  *
  * Description:
- *   Monitor link status, gracefully taking the link up and down as the
+ *   Monitor initializing status, gracefully taking the link up and down as the
  *   link becomes available or as the link is lost.
  *
  ****************************************************************************/
