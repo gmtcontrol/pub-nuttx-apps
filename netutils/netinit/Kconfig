@@ -69,10 +69,9 @@ config NETINIT_THREAD
 
 if NETINIT_THREAD
 
-config NETINIT_MONITOR
-	bool "Monitor network status"
-	default n
-	depends on ARCH_PHY_INTERRUPT && NETDEV_PHY_IOCTL && NET_UDP
+choice
+	prompt "Network monitor type"
+	default NETINIT_NONE
 	---help---
 		By default the net initialization thread will bring-up the network
 		then exit, freeing all of the resources that it required.  This is a
@@ -84,27 +83,26 @@ config NETINIT_MONITOR
 		removed), then the thread will monitor the link status and
 		attempt to bring the network back up.  In this case the resources
 		required for network initialization are never released.
+
+config NETINIT_NONE
+	bool "None"
+
+config NETINIT_MONITOR
+	bool "Netinit"
+	depends on ARCH_PHY_INTERRUPT && NETDEV_PHY_IOCTL && NET_UDP
 
 config NETLINK_MONITOR
-	bool "Monitor network link"
-	default n
+	bool "Netlink"
 	depends on NETDEV_PHY_IOCTL && NET_UDP
-	---help---
-		By default the net initialization thread will bring-up the network
-		then exit, freeing all of the resources that it required.  This is a
-		good behavior for systems with limited memory.
 
-		If this option is selected, however, then the network initialization
-		thread will persist forever; it will monitor the network status.  In
-		the event that the network goes down (for example, if a cable is
-		removed), then the thread will monitor the link status and
-		attempt to bring the network back up.  In this case the resources
-		required for network initialization are never released.
+endchoice # "Network monitor type"
+
+if NETINIT_MONITOR
 
 config NETINIT_SIGNO
 	int "Notification signal number"
 	default 32
-	depends on ARCH_PHY_INTERRUPT && (NETINIT_MONITOR || NETLINK_MONITOR)
+	depends on ARCH_PHY_INTERRUPT
 	---help---
 		The network monitor logic will receive signals when there is any
 		change in the link status.  This setting may be used to customize
@@ -113,12 +111,13 @@ config NETINIT_SIGNO
 config NETINIT_RETRYMSEC
 	int "Network bring-up retry period (msec)"
 	default 2000
-	depends on ARCH_PHY_INTERRUPT && (NETINIT_MONITOR || NETLINK_MONITOR)
+	depends on ARCH_PHY_INTERRUPT
 	---help---
 		When the network is down, the initialization thread will periodically
 		try to bring the network up.  This can be a time consuming operation
 		so is done only periodically with that period specified by this
 		selection in milliseconds.
+endif # NETINIT_MONITOR
 
 config NETINIT_THREAD_STACKSIZE
 	int "Network initialization thread stack size"

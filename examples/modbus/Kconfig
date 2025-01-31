@@ -11,12 +11,6 @@ config EXAMPLES_MODBUS
 
 if EXAMPLES_MODBUS
 
-config EXAMPLES_MODBUS_PORT
-	int "Port used for MODBUS transmissions"
-	default 0
-	---help---
-		Port used for MODBUS transmissions, default = 0 (i.e., /dev/ttyS0)
-
 config EXAMPLES_MODBUS_BAUD
 	int "MODBUS baudrate"
 	default 38400

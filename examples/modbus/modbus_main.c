@@ -69,10 +69,6 @@
 
 /* Configuration ************************************************************/
 
-#ifndef CONFIG_EXAMPLES_MODBUS_PORT
-#  define CONFIG_EXAMPLES_MODBUS_PORT 0
-#endif
-
 #ifndef CONFIG_EXAMPLES_MODBUS_BAUD
 #  define CONFIG_EXAMPLES_MODBUS_BAUD B38400
 #endif
@@ -123,6 +119,7 @@ struct modbus_state_s
 #endif
   pthread_t threadid;
   pthread_mutex_t lock;
+	uint32_t port;
 };
 
 /****************************************************************************
@@ -187,12 +184,11 @@ static inline int modbus_initialize(void)
    *
    * MB_RTU                        = RTU mode
    * 0x0a                          = Slave address
-   * CONFIG_EXAMPLES_MODBUS_PORT   = port, default=0 (i.e., /dev/ttyS0)
    * CONFIG_EXAMPLES_MODBUS_BAUD   = baud, default=B38400
    * CONFIG_EXAMPLES_MODBUS_PARITY = parity, default=MB_PAR_EVEN
    */
 
-  mberr = eMBInit(MB_RTU, 0x0a, CONFIG_EXAMPLES_MODBUS_PORT,
+  mberr = eMBInit(MB_RTU, 0x0a, g_modbus.port,
                   CONFIG_EXAMPLES_MODBUS_BAUD,
                   CONFIG_EXAMPLES_MODBUS_PARITY);
   if (mberr != MB_ENOERR)
@@ -401,8 +397,9 @@ static inline int modbus_create_pollthread(void)
 
 static void modbus_showusage(FAR const char *progname, int exitcode)
 {
-  printf("USAGE: %s [-d|e|s|q|h]\n\n", progname);
+  printf("USAGE: %s [-p <port_number>|d|e|s|q|h]\n\n", progname);
   printf("Where:\n");
+  printf("  -p <port_number>: Set the port number\n");
   printf("  -d : Disable protocol stack\n");
   printf("  -e : Enable the protocol stack\n");
   printf("  -s : Show current status\n");
@@ -432,10 +429,14 @@ int main(int argc, FAR char *argv[])
 
   /* Handle command line arguments */
 
-  while ((option = getopt(argc, argv, "desqh")) != ERROR)
+  while ((option = getopt(argc, argv, "desqhp:")) != ERROR)
     {
       switch (option)
         {
+          case 'p': /* Port used for MODBUS transmissions */
+            g_modbus.port = atoi(optarg);
+            break;
+
           case 'd': /* Disable protocol stack */
             g_modbus.threadstate = SHUTDOWN;
             break;
