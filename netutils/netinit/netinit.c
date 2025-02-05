@@ -696,9 +696,6 @@ static void netinit_configure(void)
   netinit_set_ipaddrs("eth0");
   netinit_set_ipaddrs("eth1");
 
-  netinit_set_ipaddrs("can0");
-  netinit_set_ipaddrs("can1");
-
 #ifdef CONFIG_NET_BLUETOOTH
   netinit_set_ipaddrs("bnep0");
 #endif /* CONFIG_NET_BLUETOOTH */

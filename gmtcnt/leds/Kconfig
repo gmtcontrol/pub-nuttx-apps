@@ -4,7 +4,7 @@
 #
 
 config GMTCNT_LEDS
-	tristate "LED(s) service application"
+	bool "LED(s) service application"
 	default n
 	depends on USERLED
 	select GMTCNT_UORB_TOPICS

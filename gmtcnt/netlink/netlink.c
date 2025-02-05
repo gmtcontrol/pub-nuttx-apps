@@ -448,7 +448,7 @@ int main(int argc, FAR char *argv[])
 									{
 										"systemd_start",
 										"-p", "8181",
-										"-r", "/data0/www_dash",
+										"-r", "/data0/www_root",
 										"-h", inet_ntoa(addr),
 										NULL
 									};
