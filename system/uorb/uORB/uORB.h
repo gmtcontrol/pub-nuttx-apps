@@ -25,11 +25,7 @@
  * Included Files
  ****************************************************************************/
 
-#ifdef __NuttX__
 #include <nuttx/uorb.h>
-#else
-#include <linux/uorb.h>
-#endif
 
 #include <sys/time.h>
 #include <stdio.h>
