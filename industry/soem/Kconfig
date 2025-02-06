@@ -1,0 +1,21 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config RTLABS_SOEM
+	bool "EtherCAT™ master library"
+	default n
+	depends on NET_PKT
+	---help---
+		Simple Open EtherCAT™ master library.
+
+if RTLABS_SOEM
+
+config RTLABS_SOEM_VERSION
+	string "Version"
+	default "1.4.0"
+	---help---
+		EtherCAT™ master library version.
+
+endif

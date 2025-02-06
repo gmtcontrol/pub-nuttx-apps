@@ -6,6 +6,7 @@
 config RTLABS_PROFINET
 	bool "ProfiNet™ device library"
 	default n
+	depends on NET_PKT
 	---help---
 		ProfiNet™ stack for I/O devices.
 

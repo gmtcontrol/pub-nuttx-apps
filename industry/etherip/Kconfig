@@ -4,7 +4,7 @@
 #
 
 config ODVA_ETHERIP
-	bool "OpENer EtherNet/IP™ library"
+	bool "EtherNet/IP™ library"
 	default n
 	---help---
 		OpENer is an EtherNet/IP™ stack for I/O adapter devices; 

@@ -72,7 +72,7 @@ endif
 
 CSRCS += $(PNETSTACK_SRC)
 
-# Include paths for BTStack
+# Include paths for library
 
 PNETSTACK_INC  = $(PNETSTACK_CONF)
 PNETSTACK_INC += $(PNETSTACK_ROOT)/include
