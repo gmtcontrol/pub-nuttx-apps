@@ -38,5 +38,6 @@ ORB_DECLARE(sensor_gnss_clock);
 ORB_DECLARE(sensor_gnss_geofence_event);
 ORB_DECLARE(sensor_gnss_measurement);
 ORB_DECLARE(sensor_gnss_satellite);
+ORB_DECLARE(sensor_gnss_raw);
 
 #endif

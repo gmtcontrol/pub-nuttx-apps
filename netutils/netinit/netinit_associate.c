@@ -66,7 +66,12 @@ int netinit_associate(FAR const char *ifname)
 
   if (conf.ssidlen > 0)
     {
-      ret = wpa_driver_wext_associate(&conf);
+      /* Check the interface name */
+
+      if (strncmp(ifname, "wlan", 4) == 0)
+        {
+          ret = wpa_driver_wext_associate(&conf);
+        }
     }
 
   wapi_unload_config(load);

@@ -1,0 +1,263 @@
+diff --git a/source/src/cip/cipconnectionmanager.c b/source/src/cip/cipconnectionmanager.c
+index 67d563437..829112aa8 100644
+--- a/source/src/cip/cipconnectionmanager.c
++++ b/source/src/cip/cipconnectionmanager.c
+@@ -1405,8 +1405,8 @@ void CloseConnection(CipConnectionObject *RESTRICT connection_object) {
+
+ void AddNewActiveConnection(const CipConnectionObject *const connection_object)
+ {
+-  DoublyLinkedListInsertAtHead(&connection_list, connection_object);
+-  ConnectionObjectSetState(connection_object,
++  DoublyLinkedListInsertAtHead(&connection_list, (void *)connection_object);
++  ConnectionObjectSetState((CipConnectionObject *const)connection_object,
+                            kConnectionObjectStateEstablished);
+ }
+
+diff --git a/source/src/cip/cipconnectionobject.h b/source/src/cip/cipconnectionobject.h
+index 126675f96..d7112a506 100644
+--- a/source/src/cip/cipconnectionobject.h
++++ b/source/src/cip/cipconnectionobject.h
+@@ -190,8 +190,8 @@ struct cip_connection_object {
+   ENIPMessage last_reply_sent;
+ };
+
+-DoublyLinkedListNode *CipConnectionObjectListArrayAllocator(
+-  );
++DoublyLinkedListNode *CipConnectionObjectListArrayAllocator(void);
++
+ void CipConnectionObjectListArrayFree(DoublyLinkedListNode **node);
+
+ /** @brief Array allocator
+diff --git a/source/src/cip/cipelectronickey.h b/source/src/cip/cipelectronickey.h
+index 178915c2a..c0ba1fb8d 100644
+--- a/source/src/cip/cipelectronickey.h
++++ b/source/src/cip/cipelectronickey.h
+@@ -48,8 +48,7 @@ extern const size_t kElectronicKeyFormat4Size;
+  *
+  *	@return A new unset electronic key
+  */
+-ElectronicKeyFormat4 *ElectronicKeyFormat4New(
+-  );
++ElectronicKeyFormat4 *ElectronicKeyFormat4New(void);
+
+ /** @brief Destructor for the electroic key format 4 class
+  *
+diff --git a/source/src/cip/cipethernetlink.h b/source/src/cip/cipethernetlink.h
+index dd57569b1..59d9fa2e3 100644
+--- a/source/src/cip/cipethernetlink.h
++++ b/source/src/cip/cipethernetlink.h
+@@ -42,6 +42,6 @@ typedef struct {
+
+ /* global private variables */
+
+-CipEthernetLinkObject g_ethernet_link;
++extern CipEthernetLinkObject g_ethernet_link;
+
+ #endif /* OPENER_CIPETHERNETLINK_H_*/
+diff --git a/source/src/cip/cipmessagerouter.c b/source/src/cip/cipmessagerouter.c
+index 73379df17..369302be9 100644
+--- a/source/src/cip/cipmessagerouter.c
++++ b/source/src/cip/cipmessagerouter.c
+@@ -219,7 +219,7 @@ EipStatus NotifyMessageRouter(EipUint8 *data,
+       eip_status = NotifyClass(registered_object->cip_class,
+                                &g_message_router_request,
+                                &g_message_router_response,
+-                               originator_address,
++                               (struct sockaddr *)originator_address,
+                                encapsulation_session);
+
+ #ifdef OPENER_TRACE_ENABLED
+diff --git a/source/src/enet_encap/encap.c b/source/src/enet_encap/encap.c
+index 6ef60cd8e..cb0da9be1 100644
+--- a/source/src/enet_encap/encap.c
++++ b/source/src/enet_encap/encap.c
+@@ -310,7 +310,7 @@ int HandleReceivedExplictUdpData(const int socket,
+
+ void SkipEncapsulationHeader(ENIPMessage *const outgoing_message) {
+   MoveMessageNOctets(ENCAPSULATION_HEADER_LENGTH,
+-                     &outgoing_message->current_message_position);
++                     (const CipOctet **)&outgoing_message->current_message_position);
+ }
+
+ void GenerateEncapsulationHeader(const EncapsulationData *const receive_data,
+@@ -712,7 +712,7 @@ EipStatus HandleReceivedSendRequestResponseDataCommand(
+     if (kSessionStatusValid == CheckRegisteredSessions(receive_data) )            /* see if the EIP session is registered*/
+     {
+       EipInt16 send_size =
+-        NotifyCommonPacketFormat(receive_data,
++        NotifyCommonPacketFormat((EncapsulationData *const)receive_data,
+                                  originator_address,
+                                  outgoing_message);
+       return_value = send_size;
+@@ -878,7 +878,7 @@ void CloseEncapsulationSessionBySockAddr(
+       struct sockaddr_in encapsulation_session_addr = { 0 };
+       socklen_t addrlength = sizeof(encapsulation_session_addr);
+       if (getpeername(g_registered_sessions[i],
+-                      &encapsulation_session_addr, &addrlength) < 0) {                   /* got error */
++                      (struct sockaddr *)&encapsulation_session_addr, &addrlength) < 0) {                   /* got error */
+         int error_code = GetSocketErrorNumber();
+         char *error_message = GetErrorMessage(error_code);
+         OPENER_TRACE_ERR(
+diff --git a/source/src/ports/POSIX/networkconfig.c b/source/src/ports/POSIX/networkconfig.c
+index 8414d1bd7..268353b09 100644
+--- a/source/src/ports/POSIX/networkconfig.c
++++ b/source/src/ports/POSIX/networkconfig.c
+@@ -16,7 +16,9 @@
+
+ #include <sys/ioctl.h>
+ #include <sys/socket.h>
++#ifndef __NuttX__
+ #include <linux/if.h>
++#endif
+ #include <net/if.h>
+ #include <netinet/in.h>
+
+@@ -26,6 +28,10 @@
+ #include <arpa/inet.h>
+ #include <unistd.h>
+
++/* Global ethernet link variable */
++
++CipEthernetLinkObject g_ethernet_link;
++
+ #define LOOPBACK_BINARY 0x7f000001
+
+ void ConfigureMacAddress(const char *interface) {
+@@ -180,7 +186,7 @@ void ConfigureDomainName() {
+       interface_configuration_.domain_name.string = (EipByte *) CipCalloc(
+         interface_configuration_.domain_name.length + 1,
+         sizeof(EipByte) );
+-      snprintf(interface_configuration_.domain_name.string,
++      snprintf((char*)interface_configuration_.domain_name.string,
+                (interface_configuration_.domain_name.length + 1) *
+                sizeof(EipByte),
+                "%s",
+diff --git a/source/src/ports/POSIX/networkconfig.h b/source/src/ports/POSIX/networkconfig.h
+index 4a7cec415..c76a4cde2 100644
+--- a/source/src/ports/POSIX/networkconfig.h
++++ b/source/src/ports/POSIX/networkconfig.h
+@@ -7,8 +7,6 @@
+
+ EipStatus ConfigureNetworkInterface(const char *network_interface);
+
+-void ConfigureDomainName(
+-  );
++void ConfigureDomainName(void);
+
+-void ConfigureHostName(
+-  );
++void ConfigureHostName(void);
+diff --git a/source/src/ports/generic_networkhandler.c b/source/src/ports/generic_networkhandler.c
+index dc47f1026..1a8343d6c 100644
+--- a/source/src/ports/generic_networkhandler.c
++++ b/source/src/ports/generic_networkhandler.c
+@@ -27,6 +27,18 @@
+
+ #define MAX_NO_OF_TCP_SOCKETS 10
+
++/* Global variables */
++
++SocketTimer g_timestamps[OPENER_NUMBER_OF_SUPPORTED_SESSIONS];
++fd_set master_socket;
++fd_set read_socket;
++int highest_socket_handle;
++int g_current_active_tcp_socket;
++struct timeval g_time_value;
++MilliSeconds g_actual_time;
++MilliSeconds g_last_time;
++NetworkStatus g_network_status;
++
+ extern CipTcpIpNetworkInterfaceConfiguration interface_configuration_;
+
+ /** @brief handle any connection request coming in the TCP server socket.
+@@ -192,11 +204,12 @@ EipStatus NetworkHandlerInitialize(void) {
+     return kEipStatusError;
+   }
+
+-  struct sockaddr_in global_broadcast_address = { .sin_family = {AF_INET},
+-                                                  .sin_port = htons(
+-                                                    kOpenerEthernetPort),
+-                                                  .sin_addr.s_addr = htonl(
+-                                                    INADDR_ANY) };
++  struct sockaddr_in global_broadcast_address =
++	{
++		.sin_family = AF_INET,
++    .sin_port = htons(kOpenerEthernetPort),
++    .sin_addr.s_addr = htonl(INADDR_ANY)
++	};
+
+   /* enable the UDP socket to receive broadcast messages */
+   if ( 0
+diff --git a/source/src/ports/generic_networkhandler.h b/source/src/ports/generic_networkhandler.h
+index 3f7863847..e466f87f7 100644
+--- a/source/src/ports/generic_networkhandler.h
++++ b/source/src/ports/generic_networkhandler.h
+@@ -27,24 +27,24 @@
+ #include "appcontype.h"
+ #include "socket_timer.h"
+
+-SocketTimer g_timestamps[OPENER_NUMBER_OF_SUPPORTED_SESSIONS];
++extern SocketTimer g_timestamps[OPENER_NUMBER_OF_SUPPORTED_SESSIONS];
+
+ //EipUint8 g_ethernet_communication_buffer[PC_OPENER_ETHERNET_BUFFER_SIZE]; /**< communication buffer */
+
+-fd_set master_socket;
+-fd_set read_socket;
++extern fd_set master_socket;
++extern fd_set read_socket;
+
+-int highest_socket_handle; /**< temporary file descriptor for select() */
++extern int highest_socket_handle; /**< temporary file descriptor for select() */
+
+ /** @brief This variable holds the TCP socket the received to last explicit message.
+  * It is needed for opening point to point connection to determine the peer's
+  * address.
+  */
+-int g_current_active_tcp_socket;
++extern int g_current_active_tcp_socket;
+
+-struct timeval g_time_value;
+-MilliSeconds g_actual_time;
+-MilliSeconds g_last_time;
++extern struct timeval g_time_value;
++extern MilliSeconds g_actual_time;
++extern MilliSeconds g_last_time;
+ /** @brief Struct representing the current network status
+  *
+  */
+@@ -55,7 +55,7 @@ typedef struct {
+   MilliSeconds elapsed_time;
+ } NetworkStatus;
+
+-NetworkStatus g_network_status; /**< Global variable holding the current network status */
++extern NetworkStatus g_network_status; /**< Global variable holding the current network status */
+
+ /** @brief The platform independent part of network handler initialization routine
+  *
+diff --git a/source/src/ports/opener_error.h b/source/src/ports/opener_error.h
+index c1af15a66..72cf43fca 100644
+--- a/source/src/ports/opener_error.h
++++ b/source/src/ports/opener_error.h
+@@ -17,8 +17,7 @@
+  *
+  * @return Error number
+  */
+-int GetSocketErrorNumber(
+-  );
++int GetSocketErrorNumber(void);
+
+
+ /**
+diff --git a/source/src/utils/doublylinkedlist.h b/source/src/utils/doublylinkedlist.h
+index 192519faa..aac315190 100644
+--- a/source/src/utils/doublylinkedlist.h
++++ b/source/src/utils/doublylinkedlist.h
+@@ -15,8 +15,7 @@
+
+ typedef struct doubly_linked_list_node DoublyLinkedListNode;
+
+-typedef DoublyLinkedListNode * (*NodeMemoryAllocator)(
+-  );
++typedef DoublyLinkedListNode * (*NodeMemoryAllocator)(void);
+
+ typedef void (*NodeMemoryDeallocator)(DoublyLinkedListNode **node);

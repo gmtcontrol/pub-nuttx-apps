@@ -1,0 +1,48 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config ODVA_ETHERIP
+	bool "EtherNet/IP™ library"
+	default n
+	---help---
+		OpENer is an EtherNet/IP™ stack for I/O adapter devices;
+		supports multiple I/O and explicit connections;
+		includes objects and services to make EtherNet/IP™-compliant products
+		defined in THE ETHERNET/IP SPECIFICATION and published by
+		ODVA (http://www.odva.org).
+
+if ODVA_ETHERIP
+
+config ODVA_ETHERIP_VERSION
+	string "Version"
+	default "2.3"
+	---help---
+		OpENer version.
+
+config ODVA_ETHERIP_VENDORID
+	int "Vendor ID"
+	default 1
+
+config ODVA_ETHERIP_DEVTYPE
+	int "Device type"
+	default 12
+
+config ODVA_ETHERIP_DEVNAME
+	string "Device name"
+	default "GLC23X"
+
+config ODVA_ETHERIP_DEVREV
+	hex "Device revision"
+	default 0x0100
+
+config ODVA_ETHERIP_PRODCODE
+	int "Product code"
+	default 65001
+
+config ODVA_ETHERIP_BUFSIZE
+	int "Ethernet buffer size"
+	default 512
+
+endif

@@ -1,0 +1,35 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config ARDUSIMPLE_BUTTON
+	bool "Button service application"
+	default n
+	---help---
+		This application is an service of button device.
+
+if ARDUSIMPLE_BUTTON
+
+config ARDUSIMPLE_BUTTON_DEVPATH
+	string "Button device path"
+	default "/dev/buttons"
+	---help---
+		The path to the button device. Default: /dev/buttons
+
+config ARDUSIMPLE_BUTTON_PROGNAME
+	string "Program name"
+	default "serv_button"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config ARDUSIMPLE_BUTTON_PRIORITY
+	int "Task priority"
+	default 100
+
+config ARDUSIMPLE_BUTTON_STACKSIZE
+	int "Stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif

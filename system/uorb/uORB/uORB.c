@@ -350,7 +350,6 @@ int orb_group_count(FAR const struct orb_metadata *meta)
   return instance;
 }
 
-#ifdef CONFIG_DEBUG_UORB
 int orb_sscanf(FAR const char *buf, FAR const char *format, FAR void *data)
 {
   struct lib_meminstream_s meminstream;
@@ -382,4 +381,3 @@ int orb_fprintf(FAR FILE *stream, FAR const char *format,
   lib_stdoutstream(&stdoutstream, stream);
   return lib_bsprintf(&stdoutstream.common, format, data);
 }
-#endif

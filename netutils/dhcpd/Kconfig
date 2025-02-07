@@ -87,7 +87,7 @@ config NETUTILS_DHCPD_PRIORITY
 	default 100
 
 config NETUTILS_DHCPD_STACKSIZE
-	int "DHCPD daemon priority"
+	int "DHCPD daemon stack size"
 	default DEFAULT_TASK_STACKSIZE
 
 config NETUTILS_DHCPD_SIGWAKEUP

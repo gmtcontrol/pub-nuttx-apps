@@ -10,6 +10,18 @@ config SYSTEM_YMODEM
 
 if SYSTEM_YMODEM
 
+config SYSTEM_YMODEM_FILESEND
+	bool "ymodem file send"
+	default n
+	---help---
+		The YModem application file send support.
+
+config SYSTEM_YMODEM_FILERECV
+	bool "ymodem file receive"
+	default y
+	---help---
+		The YModem application file receive support.
+
 config SYSTEM_YMODEM_STACKSIZE
 	int "ymodem stack size"
 	default DEFAULT_TASK_STACKSIZE

@@ -1,0 +1,64 @@
+############################################################################
+# apps/industry/etherip/Makefile.etherip
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.  The
+# ASF licenses this file to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance with the
+# License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+############################################################################
+
+EIPSTACK_FLAGS =
+EIPSTACK_CONF  = $(APPDIR)/gmtcnt/etherip
+EIPSTACK_ROOT  = $(APPDIR)/industry/etherip/opener/source/src
+
+# Skip files that don't build for this port
+
+EIPSTACK_IGNORE  = $(EIPSTACK_ROOT)/ports/MINGW
+EIPSTACK_IGNORE += $(EIPSTACK_ROOT)/ports/WIN32
+EIPSTACK_IGNORE += $(EIPSTACK_ROOT)/ports/POSIX/main.c
+EIPSTACK_IGNORE += $(EIPSTACK_ROOT)/ports/POSIX/sample_application
+
+# Source files for EIP Stack core
+
+EIPSTACK_SRC  = $(filter-out $(EIPSTACK_IGNORE), $(wildcard $(EIPSTACK_ROOT)/cip/*.c))
+EIPSTACK_SRC += $(filter-out $(EIPSTACK_IGNORE), $(wildcard $(EIPSTACK_ROOT)/enet_encap/*.c))
+EIPSTACK_SRC += $(filter-out $(EIPSTACK_IGNORE), $(wildcard $(EIPSTACK_ROOT)/ports/*.c))
+EIPSTACK_SRC += $(filter-out $(EIPSTACK_IGNORE), $(wildcard $(EIPSTACK_ROOT)/ports/POSIX/*.c))
+EIPSTACK_SRC += $(filter-out $(EIPSTACK_IGNORE), $(wildcard $(EIPSTACK_ROOT)/utils/*.c))
+
+# Port releated feature flags
+
+EIPSTACK_FLAGS += -D_POSIX_C_SOURCE=200112L -DOPENER_POSIX
+
+CSRCS += $(EIPSTACK_SRC)
+
+# Include paths for BTStack
+
+EIPSTACK_INC  = $(EIPSTACK_CONF)
+EIPSTACK_INC += $(EIPSTACK_ROOT)
+EIPSTACK_INC += $(EIPSTACK_ROOT)/cip
+EIPSTACK_INC += $(EIPSTACK_ROOT)/enet_encap
+EIPSTACK_INC += $(EIPSTACK_ROOT)/ports
+EIPSTACK_INC += $(EIPSTACK_ROOT)/ports/POSIX
+EIPSTACK_INC += $(EIPSTACK_ROOT)/utils
+
+# Extra compiler flags for BTStack
+
+EIPSTACK_FLAGS += -std=c99 -Werror=implicit-function-declaration -Wno-shadow -Wno-unused-variable
+
+# Update the compiler flags
+
+CFLAGS   += $(addprefix ${INCDIR_PREFIX}, $(EIPSTACK_INC))
+CFLAGS   += $(EIPSTACK_FLAGS)
+CXXFLAGS += $(addprefix ${INCDIR_PREFIX}, $(EIPSTACK_INC))

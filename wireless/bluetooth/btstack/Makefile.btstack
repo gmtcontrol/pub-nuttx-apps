@@ -1,0 +1,233 @@
+############################################################################
+# apps/wireless/bluetooth/btstack/Makefile.btstack
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.  The
+# ASF licenses this file to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance with the
+# License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+############################################################################
+
+BTSTACK_FLAGS =
+BTSTACK_CONF  = $(APPDIR)/ardusimple/btstack
+BTSTACK_ROOT  = $(APPDIR)/wireless/bluetooth/btstack/btstack
+
+# Skip files that don't build for this port
+
+BTSTACK_IGNORE =
+BTSTACK_IGNORE += $(BTSTACK_ROOT)/src/ble/att_db_util.c
+BTSTACK_IGNORE += $(BTSTACK_ROOT)/src/ble/le_device_db_memory.c
+BTSTACK_IGNORE += $(BTSTACK_ROOT)/src/hci_transport_em9304_spi.c
+BTSTACK_IGNORE += $(BTSTACK_ROOT)/src/hci_transport_h5.c
+ifeq ($(CONFIG_BTSTACK_BLE),)
+BTSTACK_IGNORE += $(BTSTACK_ROOT)/platform/nuttx/le_device_db_fs.c
+endif
+
+# Source files for BTStack core
+
+BTSTACK_SRC  = $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/src/*.c))
+
+# Port releated feature flags
+
+ifneq ($(CONFIG_BTSTACK_ASSERT),)
+BTSTACK_FLAGS += -DHAVE_ASSERT
+endif
+ifneq ($(CONFIG_BTSTACK_MALLOC),)
+BTSTACK_FLAGS += -DHAVE_MALLOC
+endif
+ifneq ($(CONFIG_BTSTACK_STDIN),)
+BTSTACK_FLAGS += -DHAVE_BTSTACK_STDIN
+endif
+ifneq ($(CONFIG_BTSTACK_POSIX_TIME),)
+BTSTACK_FLAGS += -DHAVE_POSIX_TIME
+endif
+ifneq ($(CONFIG_BTSTACK_POSIX_FILEIO),)
+BTSTACK_FLAGS += -DHAVE_POSIX_FILE_IO
+endif
+ifneq ($(CONFIG_BTSTACK_SOFTWARE_AES128),)
+BTSTACK_FLAGS += -DENABLE_SOFTWARE_AES128
+endif
+
+# BT LE files and flags
+
+ifneq ($(CONFIG_BTSTACK_BLE),)
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/src/ble/*.c))
+BTSTACK_FLAGS += -DENABLE_BLE -DENABLE_LE_SIGNED_WRITE -DENABLE_L2CAP_LE_CREDIT_BASED_FLOW_CONTROL_MODE
+BTSTACK_FLAGS += -DNVM_NUM_DEVICE_DB_ENTRIES=$(CONFIG_BTSTACK_NVM_NUM_DEVICE_DB_ENTRIES)
+ifneq ($(CONFIG_BTSTACK_BLE_GATT),)
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/src/ble/gatt-service/*.c))
+endif
+endif
+
+# BT Classic files and flags
+
+ifneq ($(CONFIG_BTSTACK_EDR),)
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/src/classic/*.c))
+BTSTACK_FLAGS += -DENABLE_CLASSIC -DENABLE_L2CAP_ENHANCED_RETRANSMISSION_MODE
+BTSTACK_FLAGS += -DNVM_NUM_LINK_KEYS=$(CONFIG_BTSTACK_NVM_NUM_LINK_KEYS)
+ifneq ($(CONFIG_BTSTACK_GATT_OVER_CLASSIC),)
+BTSTACK_FLAGS += -DENABLE_GATT_OVER_CLASSIC
+endif
+endif
+
+# Mesh feature files and flags
+
+ifneq ($(CONFIG_BTSTACK_MESH),)
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/src/mesh/*.c))
+BTSTACK_FLAGS += -DENABLE_MESH
+ifneq ($(CONFIG_BTSTACK_MESH_GATT),)
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/src/mesh/gatt-service/*.c))
+endif
+endif
+
+# LE roles flags
+
+ifneq ($(CONFIG_BTSTACK_BLE_CENTRAL),)
+BTSTACK_FLAGS += -DENABLE_LE_CENTRAL
+endif
+ifneq ($(CONFIG_BTSTACK_BLE_PERIPHERAL),)
+BTSTACK_FLAGS += -DENABLE_LE_PERIPHERAL
+endif
+ifneq ($(CONFIG_BTSTACK_BLE_SECURE_CONNECTIONS),)
+BTSTACK_FLAGS += -DENABLE_LE_SECURE_CONNECTIONS -DENABLE_MICRO_ECC_FOR_LE_SECURE_CONNECTIONS
+endif
+ifneq ($(CONFIG_BTSTACK_BLE_ATT_DELAYED_RESP),)
+BTSTACK_FLAGS += -DENABLE_ATT_DELAYED_RESPONSE
+endif
+
+# Debug output flags
+
+ifneq ($(CONFIG_BTSTACK_LOG_INFO),)
+BTSTACK_FLAGS += -DENABLE_LOG_INFO
+endif
+ifneq ($(CONFIG_BTSTACK_LOG_DEBUG),)
+BTSTACK_FLAGS += -DENABLE_LOG_DEBUG
+endif
+ifneq ($(CONFIG_BTSTACK_LOG_ERROR),)
+BTSTACK_FLAGS += -DENABLE_LOG_ERROR
+endif
+ifneq ($(CONFIG_BTSTACK_PRINTF_HEXDUMP),)
+BTSTACK_FLAGS += -DENABLE_PRINTF_HEXDUMP
+endif
+
+# BT Audio flags
+
+ifneq ($(CONFIG_BTSTACK_SCO_OVER_HCI),)
+BTSTACK_FLAGS += -DENABLE_SCO_OVER_HCI
+endif
+ifneq ($(CONFIG_BTSTACK_SCO_OVER_PCM),)
+BTSTACK_FLAGS += -DENABLE_SCO_OVER_PCM
+endif
+
+# BT Local name support
+
+ifneq ($(CONFIG_BTSTACK_LOCAL_NAME),)
+BTSTACK_FLAGS += -DENABLE_LOCAL_NAME
+endif
+
+# Enhanced Retransmission Mode support
+
+ifneq ($(CONFIG_BTSTACK_L2CAP_ENHANCED_RETRANSMISSION_MODE),)
+BTSTACK_FLAGS += -DENABLE_L2CAP_ENHANCED_RETRANSMISSION_MODE
+endif
+
+ifneq ($(CONFIG_BTSTACK_L2CAP_ENHANCED_RETRANSMISSION_MODE_RFCOMM),)
+BTSTACK_FLAGS += -DENABLE_L2CAP_ENHANCED_RETRANSMISSION_MODE_FOR_RFCOMM
+endif
+
+ifeq ($(CONFIG_MCUBOOT_USE_TINYCRYPT),)
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/3rd-party/micro-ecc/uECC.c))
+endif
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/3rd-party/bluedroid/encoder/srce/*.c))
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/3rd-party/bluedroid/decoder/srce/*.c))
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/3rd-party/md5/md5.c))
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/3rd-party/rijndael/rijndael.c))
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/3rd-party/yxml/yxml.c))
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/platform/nuttx/*.c))
+BTSTACK_SRC += $(filter-out $(BTSTACK_IGNORE), $(wildcard $(BTSTACK_ROOT)/chipset/nuttx/*.c))
+
+CSRCS += $(BTSTACK_SRC)
+
+# Include paths for BTStack
+
+BTSTACK_INC  = $(BTSTACK_CONF)
+BTSTACK_INC += $(BTSTACK_ROOT)
+
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/micro-ecc
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/bluedroid/decoder/include
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/bluedroid/encoder/include
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/lc3-google/include
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/md5
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/hxcmod-player
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/hxcmod-player/mod
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/rijndael
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/yxml
+BTSTACK_INC += $(BTSTACK_ROOT)/3rd-party/tinydir
+BTSTACK_INC += $(BTSTACK_ROOT)/src
+BTSTACK_INC += ${BTSTACK_ROOT}/chipset/nuttx
+BTSTACK_INC += $(BTSTACK_ROOT)/platform/nuttx
+
+# Application specific compiler flags for BTStack
+
+ifneq ($(CONFIG_ARDUSIMPLE_BTSTACK_NR_GATT_CLIENTS),)
+BTSTACK_FLAGS += -DMAX_NR_GATT_CLIENTS=CONFIG_ARDUSIMPLE_BTSTACK_NR_GATT_CLIENTS
+endif
+
+ifneq ($(CONFIG_ARDUSIMPLE_BTSTACK_NR_HIDS_CLIENTS),)
+BTSTACK_FLAGS += -DMAX_NR_HIDS_CLIENTS=CONFIG_ARDUSIMPLE_BTSTACK_NR_HIDS_CLIENTS
+endif
+
+ifneq ($(CONFIG_ARDUSIMPLE_BTSTACK_NR_HIDS_HOSTS),)
+BTSTACK_FLAGS += -DMAX_NR_HID_HOST_CONNECTIONS=CONFIG_ARDUSIMPLE_BTSTACK_NR_HIDS_HOSTS
+endif
+
+ifneq ($(CONFIG_ARDUSIMPLE_BTSTACK_NR_SPP_CONNECTIONS),)
+BTSTACK_FLAGS += -DMAX_SPP_CONNECTIONS=CONFIG_ARDUSIMPLE_BTSTACK_NR_SPP_CONNECTIONS
+endif
+
+ifneq ($(CONFIG_ARDUSIMPLE_BTSTACK_NR_RFCOMM_SERVICES),)
+BTSTACK_FLAGS += -DMAX_NR_RFCOMM_SERVICES=CONFIG_ARDUSIMPLE_BTSTACK_NR_RFCOMM_SERVICES
+endif
+
+ifneq ($(CONFIG_ARDUSIMPLE_BTSTACK_NR_L2CAP_SERVICES),)
+BTSTACK_FLAGS += -DMAX_NR_L2CAP_SERVICES=CONFIG_ARDUSIMPLE_BTSTACK_NR_L2CAP_SERVICES
+endif
+
+# Extra compiler flags for BTStack
+
+BTSTACK_FLAGS += -D_NUTTX_MONOTONIC_CLOCK
+BTSTACK_FLAGS += -Wunused-but-set-variable -Wunused-variable -Wswitch-default -Werror
+BTSTACK_FLAGS += -Wno-format -Wno-error=format -Wno-error=format-truncation -Wno-error=undef -Wno-error=unused-function -Wno-error=unused-variable
+
+# Micro ECC flags
+
+BTSTACK_FLAGS += -DuECC_PLATFORM=uECC_arm_thumb2 -D__clang_major__=0 -D__clang_minor__=0
+BTSTACK_FLAGS += -Dasm_clear=0 -Dasm_isZero=0 -Dasm_testBit=0 -Dasm_set=0 -Dasm_cmp=0 -Dasm_rshift1=0 -Dasm_add=0 -Dasm_sub=0 -Dasm_mult=0
+BTSTACK_FLAGS += -Dasm_modAdd=0 -Dasm_modSub=0 -Dasm_modSub_fast=0 -Dasm_mmod_fast=0 -Dasm_modInv=0
+
+
+# Tinydir flags
+
+BTSTACK_FLAGS += -D_TINYDIR_PATH_MAX=256
+
+# Buffer flags
+
+BTSTACK_FLAGS += -DHCI_ACL_PAYLOAD_SIZE=$(CONFIG_BTSTACK_HCI_ACL_PAYLOAD_SIZE)
+BTSTACK_FLAGS += -DHCI_INCOMING_PRE_BUFFER_SIZE=$(CONFIG_BTSTACK_HCI_INCOMING_PRE_BUFFER_SIZE)
+BTSTACK_FLAGS += -DHCI_OUTGOING_PRE_BUFFER_SIZE=$(CONFIG_BTSTACK_HCI_OUTGOING_PRE_BUFFER_SIZE)
+
+# Update the compiler flags
+
+CFLAGS   += $(addprefix ${INCDIR_PREFIX}, $(BTSTACK_INC))
+CFLAGS   += $(BTSTACK_FLAGS)
+CXXFLAGS += $(addprefix ${INCDIR_PREFIX}, $(BTSTACK_INC))

@@ -6,6 +6,7 @@
 config EXAMPLES_GPS
 	tristate "GPS example"
 	default n
+  depends on !SENSORS_UBLOX_GNSS
 	select GPSUTILS_MINMEA_LIB
 	---help---
 		Enable the gps test example
@@ -26,5 +27,17 @@ config EXAMPLES_GPS_PRIORITY
 config EXAMPLES_GPS_STACKSIZE
 	int "GPS stack size"
 	default DEFAULT_TASK_STACKSIZE
+
+config EXAMPLES_GPS_DEVPATH
+	string "GPS device path"
+	default "/dev/ttyS5"
+	---help---
+		The device path to the GPS device
+
+config EXAMPLES_GPS_BAUDRATE
+	int "GPS port Baudrate"
+	default 38400
+	---help---
+		Choose GPS serial port baudrate.
 
 endif

@@ -1,0 +1,18 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config TFLITE_MICRO
+	bool "Tensorflow Lite Micro"
+	default n
+	---help---
+	  TensorFlow Lite for Microcontrollers.
+
+if TFLITE_MICRO
+
+config TFLITE_MICRO_VER
+	string "Tensorflow Lite Micro version"
+	default "main"
+
+endif # TFLITE_MICRO

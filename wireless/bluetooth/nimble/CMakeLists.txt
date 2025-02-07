@@ -26,7 +26,7 @@ if(CONFIG_NIMBLE)
       mynewt-nimble
       DOWNLOAD_NAME "${CONFIG_NIMBLE_REF}.tar.gz"
       DOWNLOAD_DIR ${CMAKE_CURRENT_LIST_DIR}
-      URL "https://github.com/apache/mynewt-nimble/archive/${CONFIG_NIMBLE_REF}.tar.gz"
+      URL "https://github.com/stalyatech/mynewt-nimble/archive/${CONFIG_NIMBLE_REF}.tar.gz"
           SOURCE_DIR
           ${CMAKE_CURRENT_LIST_DIR}/mynewt-nimble
           BINARY_DIR

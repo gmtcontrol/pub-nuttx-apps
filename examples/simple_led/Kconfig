@@ -1,0 +1,26 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_SIMPLE_LED
+	tristate "Simple LED example"
+	default n
+	---help---
+		Enable the simple LED example
+
+if EXAMPLES_SIMPLE_LED
+
+config EXAMPLES_SIMPLE_LED_PROGNAME
+	string "Program name"
+	default "simple_led"
+
+config EXAMPLES_SIMPLE_LED_PRIORITY
+	int "Simple LED task priority"
+	default 100
+
+config EXAMPLES_SIMPLE_LED_STACKSIZE
+	int "Simple LED stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif

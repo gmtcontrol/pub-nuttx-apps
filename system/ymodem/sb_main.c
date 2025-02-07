@@ -46,10 +46,12 @@ struct ymodem_priv_s
   /* Async */
 
   struct circbuf_s circ;
+#ifndef CONFIG_DISABLE_PTHREAD
   pthread_mutex_t mutex;
   pthread_cond_t cond;
-  size_t buffersize;
   pthread_t pid;
+#endif /* CONFIG_DISABLE_PTHREAD */
+  size_t buffersize;
   bool exited;
 };
 
@@ -57,6 +59,7 @@ struct ymodem_priv_s
  * Private Functions
  ****************************************************************************/
 
+#ifndef CONFIG_DISABLE_PTHREAD
 static FAR void *async_read(FAR void *arg)
 {
   FAR struct ymodem_priv_s *priv = arg;
@@ -89,12 +92,14 @@ static FAR void *async_read(FAR void *arg)
   pthread_mutex_unlock(&priv->mutex);
   return NULL;
 }
+#endif /*CONFIG_DISABLE_PTHREAD */
 
 static int read_data(FAR struct ymodem_priv_s *priv,
                      FAR uint8_t *data, size_t size)
 {
   ssize_t i = 0;
 
+#ifndef CONFIG_DISABLE_PTHREAD
   if (priv->buffersize)
     {
       pthread_mutex_lock(&priv->mutex);
@@ -125,6 +130,7 @@ static int read_data(FAR struct ymodem_priv_s *priv,
       pthread_mutex_unlock(&priv->mutex);
     }
   else
+#endif /* CONFIG_DISABLE_PTHREAD */
     {
       while (i < size)
         {
@@ -179,6 +185,7 @@ static int handler(FAR struct ymodem_ctx_s *ctx)
       filename = basename(filename);
       strlcpy(ctx->file_name, filename, PATH_MAX);
       ctx->file_length = st.st_size;
+      ctx->file_done = 0;
     }
   else if (ctx->packet_type == YMODEM_DATA_PACKET)
     {
@@ -207,6 +214,7 @@ static int handler(FAR struct ymodem_ctx_s *ctx)
   return 0;
 }
 
+#ifndef CONFIG_DISABLE_PTHREAD
 static int async_init(FAR struct ymodem_priv_s *priv)
 {
   int ret;
@@ -262,6 +270,7 @@ static void async_uninit(FAR struct ymodem_priv_s *priv)
   pthread_mutex_destroy(&priv->mutex);
   circbuf_uninit(&priv->circ);
 }
+#endif /* CONFIG_DISABLE_PTHREAD */
 
 static void show_usage(FAR const char *progname)
 {
@@ -325,10 +334,12 @@ int main(int argc, FAR char *argv[])
         }
     }
 
+#ifndef CONFIG_DISABLE_PTHREAD
   if (priv.buffersize && ctx.custom_size > priv.buffersize)
     {
       show_usage(argv[0]);
     }
+#endif /* CONFIG_DISABLE_PTHREAD */
 
   ctx.packet_handler = handler;
   if (devname)
@@ -350,6 +361,8 @@ int main(int argc, FAR char *argv[])
 
   ctx.priv = &priv;
   priv.filelist = &argv[optind];
+
+#ifndef CONFIG_DISABLE_PTHREAD
   if (priv.buffersize)
     {
       ret = async_init(&priv);
@@ -358,15 +371,18 @@ int main(int argc, FAR char *argv[])
           goto out;
         }
     }
+#endif /* CONFIG_DISABLE_PTHREAD */
 
   ret = ymodem_send(&ctx);
 
+#ifndef CONFIG_DISABLE_PTHREAD
   if (priv.buffersize)
     {
       async_uninit(&priv);
     }
-
 out:
+#endif /* CONFIG_DISABLE_PTHREAD */
+
   if (priv.fd > 0)
     {
       close(priv.fd);

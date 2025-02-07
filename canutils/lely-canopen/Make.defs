@@ -20,9 +20,4 @@
 
 ifneq ($(CONFIG_CANUTILS_LELYCANOPEN),)
 CONFIGURED_APPS += $(APPDIR)/canutils/lely-canopen
-
-# It allows `<lely/xxx.h>` import.
-
-CFLAGS += ${INCDIR_PREFIX}$(APPDIR)/canutils/lely-canopen/lely-core/include
-CXXFLAGS += ${INCDIR_PREFIX}$(APPDIR)/canutils/lely-canopen/lely-core/include
 endif

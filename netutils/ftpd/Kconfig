@@ -16,6 +16,10 @@ config FTPD_WORKERSTACKSIZE
 	int "FTPD server thread stack size"
 	default DEFAULT_TASK_STACKSIZE
 
+config FTPD_WORKERPRIORITY
+	int "FTPD server thread priority"
+	default 120
+
 config FTPD_LOGIN_PASSWD
 	bool "Verify FTPD server login with encrypted password file"
 	default n

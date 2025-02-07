@@ -57,6 +57,7 @@ struct telnetd_config_s
                                   * connection is accepted. */
 #endif
   FAR char * const *t_argv;      /* The argument pass to the spawned task  */
+  FAR const char   *ifname;      /* Interface name */
 };
 
 /****************************************************************************

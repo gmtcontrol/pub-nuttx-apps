@@ -1,0 +1,62 @@
+############################################################################
+# apps/industry/soem/Makefile.soem
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.  The
+# ASF licenses this file to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance with the
+# License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+############################################################################
+
+SOEM_FLAGS =
+SOEM_CONF  = $(APPDIR)/gmtcnt/soem
+SOEM_ROOT  = $(APPDIR)/industry/soem/soem
+
+# Skip files that don't build for this port
+
+SOEM_IGNORE =
+SOEM_SOURCE =
+
+# Source files for library core
+
+SOEM_SOURCE += $(filter-out $(SOEM_IGNORE), $(wildcard $(SOEM_ROOT)/soem/*.c))
+
+# Source files for OS abstruction layer
+
+SOEM_SOURCE += $(filter-out $(SOEM_IGNORE), $(wildcard $(SOEM_ROOT)/osal/nuttx/*.c))
+SOEM_SOURCE += $(filter-out $(SOEM_IGNORE), $(wildcard $(SOEM_ROOT)/oshw/nuttx/*.c))
+
+# Port releated flags
+
+SOEM_FLAGS += -DBYTE_ORDER=LITTLE_ENDIAN
+
+CSRCS += $(SOEM_SOURCE)
+
+# Include paths for library
+
+SOEM_INC  = $(SOEM_CONF)
+SOEM_INC += $(SOEM_ROOT)/osal
+SOEM_INC += $(SOEM_ROOT)/osal/nuttx
+SOEM_INC += $(SOEM_ROOT)/oshw/nuttx
+SOEM_INC += $(SOEM_ROOT)/soem
+
+# Extra compiler flags
+
+SOEM_FLAGS += -std=c99 -Werror=implicit-function-declaration
+SOEM_FLAGS += -DEC_DEBUG
+
+# Update the compiler flags
+
+CFLAGS   += $(addprefix ${INCDIR_PREFIX}, $(SOEM_INC))
+CFLAGS   += $(SOEM_FLAGS)
+CXXFLAGS += $(addprefix ${INCDIR_PREFIX}, $(SOEM_INC))

@@ -1,0 +1,31 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config GMTCNT_LEDS
+	bool "LED(s) service application"
+	default n
+	depends on USERLED
+	select GMTCNT_UORB_TOPICS
+	---help---
+		This application is an service of LED(s) device.
+
+if GMTCNT_LEDS
+
+config GMTCNT_LEDS_PROGNAME
+	string "Program name"
+	default "serv_leds"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config GMTCNT_LEDS_PRIORITY
+	int "LED task priority"
+	default 100
+
+config GMTCNT_LEDS_STACKSIZE
+	int "LED stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif # GMTCNT_LEDS

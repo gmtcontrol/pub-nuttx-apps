@@ -1,0 +1,180 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config ARDUSIMPLE_BTSTACK
+	tristate "BTStack application"
+  depends on BTSTACK
+	default n
+	---help---
+		Enable the btstack application(s).
+
+if ARDUSIMPLE_BTSTACK
+choice
+	prompt "Application Type"
+	default ARDUSIMPLE_BTSTACK_SPP
+
+config ARDUSIMPLE_BTSTACK_GATT
+	bool "GATT"
+
+config ARDUSIMPLE_BTSTACK_SPP
+	bool "SPP"
+
+config ARDUSIMPLE_BTSTACK_HID
+	bool "HID"
+
+config ARDUSIMPLE_BTSTACK_GAP
+	bool "GAP"
+
+endchoice # "Application Type"
+
+if ARDUSIMPLE_BTSTACK_GATT
+
+choice
+	prompt "GATT Type"
+	default ARDUSIMPLE_BTSTACK_GATT_COUNTER
+
+config ARDUSIMPLE_BTSTACK_GATT_COUNTER
+	bool "Counter"
+
+config ARDUSIMPLE_BTSTACK_GATT_BROWSER
+	bool "Browser"
+
+config ARDUSIMPLE_BTSTACK_GATT_BATT_QUERY
+	bool "Battery Query"
+
+config ARDUSIMPLE_BTSTACK_GATT_HEART_RATE_CLIENT
+	bool "Heart Rate Client"
+
+config ARDUSIMPLE_BTSTACK_GATT_HEART_RATE_SERVER
+	bool "Heart Rate Client"
+
+config ARDUSIMPLE_BTSTACK_GATT_DEVINFO_QUERY
+	bool "Device Information Query"
+
+endchoice # "GATT Type"
+
+endif # ARDUSIMPLE_BTSTACK_GATT
+
+if ARDUSIMPLE_BTSTACK_SPP
+
+choice
+	prompt "SPP Type"
+	default ARDUSIMPLE_BTSTACK_SPP_MAPKIT
+
+config ARDUSIMPLE_BTSTACK_SPP_MAPKIT
+	bool "MapKit BR/EDR"
+
+config ARDUSIMPLE_BTSTACK_SPP_NORDIC_LE_MAPKIT
+	bool "Mapkit Nordic LE"
+
+config ARDUSIMPLE_BTSTACK_SPP_UBLOX_LE_MAPKIT
+	bool "Mapkit u-blox LE"
+
+config ARDUSIMPLE_BTSTACK_SPP_COUNTER
+	bool "Counter"
+
+config ARDUSIMPLE_BTSTACK_SPP_UBLOX_LE_COUNTER
+	bool "Counter u-blox LE"
+
+config ARDUSIMPLE_BTSTACK_SPP_NORDIC_LE_COUNTER
+	bool "Counter Nordic LE"
+
+config ARDUSIMPLE_BTSTACK_SPP_STREAMER
+	bool "Streamer"
+
+config ARDUSIMPLE_BTSTACK_SPP_STREAMER_CLIENT
+	bool "Streamer Client"
+
+config ARDUSIMPLE_BTSTACK_SPP_NORDIC_LE_STREAMER
+	bool "Streamer Nordic LE"
+
+config ARDUSIMPLE_BTSTACK_SPP_FLOWCTRL
+	bool "Flow Control"
+
+config ARDUSIMPLE_BTSTACK_SPP_GATT_COUNTER
+	bool "SPP & GATT Counter"
+
+config ARDUSIMPLE_BTSTACK_SPP_GATT_STREAMER
+	bool "SPP & GATT Streamer"
+
+endchoice # "SPP Type"
+
+endif # ARDUSIMPLE_BTSTACK_SPP
+
+if ARDUSIMPLE_BTSTACK_HID
+
+choice
+	prompt "HID Type"
+	default ARDUSIMPLE_BTSTACK_HID_KEYBOARD
+
+config ARDUSIMPLE_BTSTACK_HID_HOST
+	bool "Host"
+
+config ARDUSIMPLE_BTSTACK_HID_MOUSE
+	bool "Mouse"
+
+config ARDUSIMPLE_BTSTACK_HID_KEYBOARD
+	bool "Keyboard"
+
+endchoice # "HID Type"
+
+endif # ARDUSIMPLE_BTSTACK_HID
+
+if ARDUSIMPLE_BTSTACK_GAP
+
+choice
+	prompt "GAP Type"
+	default ARDUSIMPLE_BTSTACK_GAP_ADVER
+
+config ARDUSIMPLE_BTSTACK_GAP_INQUIRY
+	bool "Inquiry"
+
+config ARDUSIMPLE_BTSTACK_GAP_ADVER
+	bool "LE Advertisements"
+
+endchoice # "GAP Type"
+
+endif # ARDUSIMPLE_BTSTACK_GAP
+
+config ARDUSIMPLE_BTSTACK_NR_GATT_CLIENTS
+	int "GATT maximum client number"
+	default 1
+
+config ARDUSIMPLE_BTSTACK_NR_HIDS_CLIENTS
+	int "HID maximum client number"
+	default 1
+
+config ARDUSIMPLE_BTSTACK_NR_HIDS_HOSTS
+	int "HID maximum host number"
+	default 1
+
+config ARDUSIMPLE_BTSTACK_NR_SPP_CONNECTIONS
+	int "SPP maximum connection number"
+	default 1
+
+config ARDUSIMPLE_BTSTACK_NR_RFCOMM_SERVICES
+	int "RFCOMM maximum sevice number"
+	default 2
+
+config ARDUSIMPLE_BTSTACK_NR_L2CAP_SERVICES
+	int "L2CAP maximum sevice number"
+	default 3
+
+config ARDUSIMPLE_BTSTACK_PROGNAME
+	string "Program name"
+	default "btstack"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config ARDUSIMPLE_BTSTACK_PRIORITY
+	int "BTStack task priority"
+	default 100
+
+config ARDUSIMPLE_BTSTACK_STACKSIZE
+	int "BTStack stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif # ARDUSIMPLE_BTSTACK

@@ -20,12 +20,22 @@
 
 include $(APPDIR)/Make.defs
 
-PROGNAME = sb rb
-PRIORITY = $(CONFIG_SYSTEM_YMODEM_PRIORITY)
+PROGNAME 	=
+PRIORITY 	= $(CONFIG_SYSTEM_YMODEM_PRIORITY)
 STACKSIZE = $(CONFIG_SYSTEM_YMODEM_STACKSIZE)
-MODULE = $(CONFIG_SYSTEM_YMODEM)
+MODULE 		= $(CONFIG_SYSTEM_YMODEM)
 
-CSRCS  = ymodem.c
-MAINSRC = sb_main.c rb_main.c
+CSRCS  		= ymodem.c
+MAINSRC 	=
+
+ifneq ($(CONFIG_SYSTEM_YMODEM_FILESEND),)
+MAINSRC  += sb_main.c
+PROGNAME += sb
+endif
+
+ifneq ($(CONFIG_SYSTEM_YMODEM_FILERECV),)
+MAINSRC  += rb_main.c
+PROGNAME += rb
+endif
 
 include $(APPDIR)/Application.mk

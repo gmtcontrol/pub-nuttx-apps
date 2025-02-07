@@ -1,0 +1,43 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config ARDUSIMPLE_LEDS
+	tristate "LED(s) service application"
+	default n
+	depends on USERLED
+  select ARDUSIMPLE_UORB_TOPICS
+	---help---
+		This application is an service of LED(s) device.
+
+if ARDUSIMPLE_LEDS
+
+config ARDUSIMPLE_LEDS_PROGNAME
+	string "Program name"
+	default "serv_leds"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config ARDUSIMPLE_LEDS_PRIORITY
+	int "LED task priority"
+	default 100
+
+config ARDUSIMPLE_LEDS_STACKSIZE
+	int "LED stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+config ARDUSIMPLE_LEDS_PWMPATH
+	string "LED PWM path"
+	default "/dev/pwm2"
+
+config ARDUSIMPLE_LEDS_DEVPATH
+	string "LED device path"
+	default "/dev/userleds"
+
+config ARDUSIMPLE_LEDS_LEDSET
+	hex "Subset of LEDs to use"
+	default 0x3f
+
+endif # ARDUSIMPLE_LEDS

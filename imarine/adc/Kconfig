@@ -1,0 +1,35 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config IMARINE_ADC_READ
+	bool "ADC data read service application"
+	default n
+	---help---
+		Read the memory mapped ADC data.
+
+if IMARINE_ADC_READ
+
+config IMARINE_ADC_MEMADDR
+	hex "ADC device memory address"
+	default 0xE0000000
+	---help---
+		Memory address of ADC device.
+
+config IMARINE_ADC_PROGNAME
+	string "Program name"
+	default "adc_read"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config IMARINE_ADC_PRIORITY
+	int "Task priority"
+	default 100
+
+config IMARINE_ADC_STACKSIZE
+	int "Stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif

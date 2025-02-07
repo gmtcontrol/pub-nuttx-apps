@@ -1,0 +1,95 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config EXAMPLES_MONGOOSE
+	tristate "Mongoose examples"
+	default n
+	depends on NETUTILS_MONGOOSE
+	---help---
+		Enable the Mongoose examples.
+
+if EXAMPLES_MONGOOSE
+
+config EXAMPLES_MONGOOSE_HTTPD
+	tristate "Mongoose Simple"
+	default n
+	depends on NETUTILS_MONGOOSE
+	---help---
+		Enable the Mongoose simple web server application.
+
+config EXAMPLES_MONGOOSE_WEBSOCKD
+	tristate "Mongoose Websocket"
+	default n
+	depends on NETUTILS_MONGOOSE
+	---help---
+		Enable the Mongoose websocket server application.
+
+config EXAMPLES_MONGOOSE_SMARTANT
+	tristate "Mongoose Smart Antenna"
+	default n
+	depends on NETUTILS_MONGOOSE
+	---help---
+		Enable the Mongoose smart antenna server application.
+
+if EXAMPLES_MONGOOSE_SMARTANT
+
+choice
+	prompt "GNSS message type"
+	default EXAMPLES_MONGOOSE_SMARTANT_UORB
+
+config EXAMPLES_MONGOOSE_SMARTANT_UORB
+	bool "Use uORB"
+	select UORB
+
+config EXAMPLES_MONGOOSE_SMARTANT_FIFO
+	bool "Use FIFO"
+  select PIPES
+
+endchoice # GNSS message type
+
+endif # EXAMPLES_MONGOOSE_SMARTANT
+
+config EXAMPLES_MONGOOSE_DASHBOARD
+	tristate "Mongoose Dashboard"
+	default n
+	depends on NETUTILS_MONGOOSE
+	---help---
+		Enable the Mongoose Dashboard server application.
+
+if EXAMPLES_MONGOOSE_DASHBOARD
+
+config EXAMPLES_MONGOOSE_DASHBOARD_OTAPATH
+	string "Dashboard OTA path"
+	default "/dev/img0"
+
+endif # EXAMPLES_MONGOOSE_DASHBOARD
+
+config EXAMPLES_MONGOOSE_PRIORITY
+	int "Mongoose task priority"
+	default 100
+
+config EXAMPLES_MONGOOSE_STACKSIZE
+	int "Mongoose stack size"
+	default 8192
+
+config EXAMPLES_MONGOOSE_IPADDR
+	hex "Device IP"
+	default 0x0a000014
+	---help---
+		This is the IP address of your board.
+
+config EXAMPLES_MONGOOSE_DRIPADDR
+	hex "Default Router IP"
+	default 0x0a000001
+	---help---
+		This is the IP address of your router/gateway.
+
+config EXAMPLES_MONGOOSE_NETMASK
+	hex "Network Mask"
+	default 0xffffff00
+	---help---
+		This is the network mask to use on this device.
+
+endif

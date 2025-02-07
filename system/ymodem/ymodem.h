@@ -58,6 +58,7 @@ struct ymodem_ctx_s
   int packet_type;
   char file_name[PATH_MAX];
   size_t file_length;
+  bool file_done;
 
   /* Private data */
 

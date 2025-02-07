@@ -1,0 +1,39 @@
+//
+// btstack_config.h for generic POSIX H4 port
+//
+// Documentation: https://bluekitchen-gmbh.com/btstack/#how_to/
+//
+
+#ifndef BTSTACK_CONFIG_H
+#define BTSTACK_CONFIG_H
+
+#define MAX_NR_BNEP_CHANNELS              0
+#define MAX_NR_BNEP_SERVICES              0
+#define MAX_NR_HFP_CONNECTIONS            0
+#define MAX_NR_AVDTP_STREAM_ENDPOINTS     0
+#define MAX_NR_AVDTP_CONNECTIONS          0
+#define MAX_NR_AVRCP_CONNECTIONS          0
+#define MAX_NR_AVRCP_BROWSING_CONNECTIONS 0
+
+#define MAX_NR_HCI_CONNECTIONS            MAX_SPP_CONNECTIONS
+#define MAX_NR_L2CAP_CHANNELS             (MAX_SPP_CONNECTIONS + 1)
+#define MAX_NR_RFCOMM_CHANNELS            MAX_SPP_CONNECTIONS
+#define MAX_NR_RFCOMM_MULTIPLEXERS        MAX_SPP_CONNECTIONS
+#define MAX_NR_SERVICE_RECORD_ITEMS       1
+#define MAX_NR_SM_LOOKUP_ENTRIES          3
+#define MAX_NR_WHITELIST_ENTRIES          1
+#define MAX_NR_GOEP_SERVER_SERVICES       1
+#define MAX_NR_GOEP_SERVER_CONNECTIONS    1
+#define MAX_NR_BATTERY_SERVICE_CLIENTS    0
+#define MAX_NR_LE_DEVICE_DB_ENTRIES       1
+
+#define MAX_NR_MESH_NETWORK_PDUS          0
+#define MAX_NR_MESH_SEGMENTED_PDUS        0
+#define MAX_NR_MESH_UPPER_TRANSPORT_PDUS  0
+#define MAX_NR_MESH_VIRTUAL_ADDRESSS      0
+
+#define MAX_NR_SCAN_PARAMETERS_SERVICE_CLIENTS    1
+#define MAX_NR_PERIODIC_ADVERTISER_LIST_ENTRIES   1
+#define MAX_NR_BTSTACK_LINK_KEY_DB_MEMORY_ENTRIES 2
+
+#endif

@@ -1,0 +1,25 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config RTLABS_PROFINET
+	bool "ProfiNet™ device library"
+	default n
+	depends on NET_PKT
+	---help---
+		ProfiNet™ stack for I/O devices.
+
+if RTLABS_PROFINET
+
+config RTLABS_PROFINET_VERSION
+	string "Version"
+	default "1.0.0"
+	---help---
+		ProfiNet™ version.
+
+config RTLABS_PROFINET_SNMP
+	bool "SNMP support"
+	default n
+
+endif

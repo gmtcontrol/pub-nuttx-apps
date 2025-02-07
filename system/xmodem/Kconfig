@@ -1,0 +1,34 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config SYSTEM_XMODEM
+	tristate "XMODEM"
+	---help---
+		Enable support for xmodem.
+
+if SYSTEM_XMODEM
+
+config SYSTEM_XMODEM_STACKSIZE
+	int "xmodem stack size"
+	default DEFAULT_TASK_STACKSIZE
+	---help---
+		The size of stack allocated for the xmodem task.
+
+config SYSTEM_XMODEM_PRIORITY
+	int "xmodem priority"
+	default 100
+	---help---
+		The priority of the xmodem task.
+
+config SYSTEM_XMODEM_DEBUG
+	bool "xmodem debug"
+	default n
+
+config SYSTEM_XMODEM_DEBUG_FILEPATH
+	string "save xmodem debug log path"
+	depends on SYSTEM_XMODEM_DEBUG
+	default "/tmp/xmodem"
+
+endif

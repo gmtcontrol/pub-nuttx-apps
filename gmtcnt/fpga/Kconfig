@@ -1,0 +1,50 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config GMTCNT_FPGA
+	bool "FPGA dedicated tools"
+	default n
+	depends on SPI
+	depends on SPI_TRION
+	---help---
+		Enable support for Efinix Trion FPGA.
+
+if GMTCNT_FPGA
+
+config GMTCNT_FPGA_LOAD
+	bool "FPGA bitstream loader"
+	default n
+	---help---
+		This application is bitstream loader for the Efinix Trion FPGA.
+
+if GMTCNT_FPGA_LOAD
+config GMTCNT_FPGA_BUFSIZE
+	int "FPGA buffer size"
+	default 1024
+	---help---
+		The default buffer size for FPGA bitstream loading.
+endif # GMTCNT_FPGA_LOAD
+
+config GMTCNT_FPGA_CTRL
+	bool "FPGA logic controller"
+	default n
+	---help---
+		This application is logic controller for the Efinix Trion FPGA.
+
+config GMTCNT_FPGA_DEVNAME
+	string "FPGA device path"
+	default "/dev/trion0"
+	---help---
+		The default path to the FPGA device.
+
+config GMTCNT_FPGA_PRIORITY
+	int "Task priority"
+	default 100
+
+config GMTCNT_FPGA_STACKSIZE
+	int "Task stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif # GMTCNT_FPGA

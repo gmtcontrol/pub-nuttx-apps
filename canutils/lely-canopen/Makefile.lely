@@ -1,0 +1,158 @@
+############################################################################
+# apps/canutils/lely-canopen/Makefile.lely
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.  The
+# ASF licenses this file to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance with the
+# License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+###########################################################################
+
+LELY_FLAGS =
+LELY_ROOT  = $(WD)/$(LELYCANOPEN_DIR)
+
+# CAN network object
+
+LELY_SRC += $(LELY_ROOT)/src/can/buf.c
+LELY_SRC += $(LELY_ROOT)/src/can/msg.c
+LELY_SRC += $(LELY_ROOT)/src/can/vci.c
+LELY_SRC += $(LELY_ROOT)/src/can/net.c
+
+# CANopen library
+
+LELY_SRC += $(LELY_ROOT)/src/co/crc.c
+LELY_SRC += $(LELY_ROOT)/src/co/dev.c
+LELY_SRC += $(LELY_ROOT)/src/co/nmt.c
+LELY_SRC += $(LELY_ROOT)/src/co/nmt_hb.c
+LELY_SRC += $(LELY_ROOT)/src/co/nmt_srv.c
+LELY_SRC += $(LELY_ROOT)/src/co/obj.c
+LELY_SRC += $(LELY_ROOT)/src/co/pdo.c
+LELY_SRC += $(LELY_ROOT)/src/co/sdo.c
+LELY_SRC += $(LELY_ROOT)/src/co/ssdo.c
+LELY_SRC += $(LELY_ROOT)/src/co/type.c
+LELY_SRC += $(LELY_ROOT)/src/co/val.c
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_TIME),y)
+LELY_SRC += $(LELY_ROOT)/src/co/time.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_CSDO),y)
+LELY_SRC += $(LELY_ROOT)/src/co/csdo.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_DCF),y)
+LELY_SRC += $(LELY_ROOT)/src/co/dcf.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_EMCY),y)
+LELY_SRC += $(LELY_ROOT)/src/co/emcy.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_GW),y)
+LELY_SRC += $(LELY_ROOT)/src/co/gw.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_GW_TXT),y)
+LELY_SRC += $(LELY_ROOT)/src/co/gw_txt.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_LSS),y)
+LELY_SRC += $(LELY_ROOT)/src/co/lss.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_NMTBOOT),y)
+LELY_SRC += $(LELY_ROOT)/src/co/nmt_boot.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_NMTCFG),y)
+LELY_SRC += $(LELY_ROOT)/src/co/nmt_cfg.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_RPDO),y)
+LELY_SRC += $(LELY_ROOT)/src/co/rpdo.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_SDEV),y)
+LELY_SRC += $(LELY_ROOT)/src/co/sdev.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_SYNC),y)
+LELY_SRC += $(LELY_ROOT)/src/co/sync.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_TPDO),y)
+LELY_SRC += $(LELY_ROOT)/src/co/tpdo.c
+endif
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_WTM),y)
+LELY_SRC += $(LELY_ROOT)/src/co/wtm.c
+endif
+
+# utils
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_DIAG),y)
+LELY_SRC += $(LELY_ROOT)/src/util/diag.c
+endif
+
+LELY_SRC += $(LELY_ROOT)/src/util/bits.c
+LELY_SRC += $(LELY_ROOT)/src/util/bitset.c
+LELY_SRC += $(LELY_ROOT)/src/util/cmp.c
+LELY_SRC += $(LELY_ROOT)/src/util/config.c
+LELY_SRC += $(LELY_ROOT)/src/util/config_ini.c
+LELY_SRC += $(LELY_ROOT)/src/util/dllist.c
+LELY_SRC += $(LELY_ROOT)/src/util/endian.c
+LELY_SRC += $(LELY_ROOT)/src/util/errnum.c
+LELY_SRC += $(LELY_ROOT)/src/util/frbuf.c
+LELY_SRC += $(LELY_ROOT)/src/util/fwbuf.c
+LELY_SRC += $(LELY_ROOT)/src/util/lex.c
+LELY_SRC += $(LELY_ROOT)/src/util/membuf.c
+LELY_SRC += $(LELY_ROOT)/src/util/pheap.c
+LELY_SRC += $(LELY_ROOT)/src/util/print.c
+LELY_SRC += $(LELY_ROOT)/src/util/rbtree.c
+LELY_SRC += $(LELY_ROOT)/src/util/stop.c
+LELY_SRC += $(LELY_ROOT)/src/util/time.c
+LELY_SRC += $(LELY_ROOT)/src/util/ustring.c
+
+# Lely IO lib
+
+ifeq ($(CONFIG_CANUTILS_LELYCANOPEN_IOLIB),y)
+LELY_SRC += $(LELY_ROOT)/src/io/handle.c
+LELY_SRC += $(LELY_ROOT)/src/io/io.c
+LELY_SRC += $(LELY_ROOT)/src/io/pipe.c
+LELY_SRC += $(LELY_ROOT)/src/io/poll.c
+LELY_SRC += $(LELY_ROOT)/src/io2/posix/poll.c
+LELY_SRC += $(LELY_ROOT)/src/io2/ctx.c
+LELY_SRC += $(LELY_ROOT)/src/io/can.c
+LELY_SRC += $(LELY_ROOT)/src/can/socket.c
+endif
+
+# Include sources
+
+CSRCS += $(LELY_SRC)
+
+# Include paths
+
+LELY_INC = ${INCDIR_PREFIX}$(APPDIR)/canutils/lely-canopen/lely-core/include
+
+# Compiler flags
+
+LELY_FLAGS += ${INCDIR_PREFIX}$(APPDIR)/include/canutils/lely
+LELY_FLAGS += -D_POSIX_MAPPED_FILES=200809L
+LELY_FLAGS += -DHAVE_SYS_IOCTL_H -DHAVE_CONFIG_H
+LELY_FLAGS += -Wno-shadow -Wno-undef
+
+# Update the compiler flags
+
+CFLAGS   += $(addprefix ${INCDIR_PREFIX}, $(LELY_INC))
+CFLAGS   += $(LELY_FLAGS)
+CXXFLAGS += $(addprefix ${INCDIR_PREFIX}, $(LELY_INC))

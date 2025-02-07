@@ -1,13 +1,10 @@
 /****************************************************************************
  * apps/wireless/wapi/src/wireless.c
  *
- *   Copyright (C) 2011, 2017, 2019 Gregory Nutt. All rights reserved.
- *   Author: Gregory Nutt <gnutt@nuttx.org>
- *
- * Adapted for NuttX from WAPI:
- *
- *   Copyright (c) 2010, Volkan YAZICI <volkan.yazici@gmail.com>
- *   All rights reserved.
+ * SPDX-License-Identifier: BSD-2-Clause
+ * SPDX-FileCopyrightText: 2011,2017,2019 Gregory Nutt. All rights reserved.
+ * SPDX-FileCopyrightText: 2010, Volkan YAZICI <volkan.yazici@gmail.com>
+ * SPDX-FileContributor: Gregory Nutt <gnutt@nuttx.org>
  *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -1778,3 +1775,39 @@ int wapi_get_power_save(int sock, FAR const char *ifname, bool *on)
   return ret;
 }
 
+/****************************************************************************
+ * Name: wapi_get_ap_stas
+ *
+ * Description:
+ *   Gets associated STAs of the device.
+ *
+ ****************************************************************************/
+
+int wapi_get_ap_stas(int sock, FAR const char *ifname,
+                     int *num, struct ether_addr *mac)
+{
+  struct iwreq wrq =
+  {
+  };
+
+  int ret;
+
+  WAPI_VALIDATE_PTR(num);
+  WAPI_VALIDATE_PTR(mac);
+
+  wrq.u.data.pointer = mac;
+  wrq.u.data.length  = 0;
+
+  strlcpy(wrq.ifr_name, ifname, IFNAMSIZ);
+  ret = ioctl(sock, SIOCGIWAPASSOC, (unsigned long)((uintptr_t)&wrq));
+  if (ret < 0)
+    {
+      int errcode = errno;
+      WAPI_IOCTL_STRERROR(SIOCGIWAPASSOC, errcode);
+      ret = -errcode;
+    }
+
+  *num = wrq.u.data.length;
+
+  return ret;
+}

@@ -1,0 +1,32 @@
+
+config ARDUSIMPLE_CHARGER
+	bool "Charger service application"
+	default y
+  select ARDUSIMPLE_UORB_TOPICS
+	---help---
+		This application is an service of charger device.
+
+if ARDUSIMPLE_CHARGER
+
+config ARDUSIMPLE_CHARGER_DEVNAME
+	string "Charger device name"
+	default "/dev/batt0"
+	---help---
+		Set the charger device name.
+
+config ARDUSIMPLE_CHARGER_PROGNAME
+	string "Program name"
+	default "serv_charger"
+	---help---
+		This is the name of the program that will be use when the NSH ELF
+		program is installed.
+
+config ARDUSIMPLE_CHARGER_PRIORITY
+	int "charger task priority"
+	default 100
+
+config ARDUSIMPLE_CHARGER_STACKSIZE
+	int "charger stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif

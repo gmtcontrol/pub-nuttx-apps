@@ -1,0 +1,47 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config ARDUSIMPLE_GSERV
+	bool "GNSS service application"
+	default n
+  depends on !SENSORS_UBLOX_GNSS
+	select GPSUTILS_MINMEA_LIB
+	---help---
+		Read GNSS data and share them using named FIFO.
+
+if ARDUSIMPLE_GSERV
+
+config ARDUSIMPLE_GSERV_DEVPATH
+	string "GNSS device path"
+	default "/dev/ttyS5"
+	---help---
+		The device path to the GNSS device
+
+config ARDUSIMPLE_GSERV_BAUDRATE
+	int "GNSS port Baudrate"
+	default 38400
+	---help---
+		Choose GNSS serial port baudrate.
+
+config ARDUSIMPLE_GSERV_FIFO
+	string "FIFO name"
+	default "/var/gnss0"
+
+config ARDUSIMPLE_GSERV_PROGNAME
+	string "Program name"
+	default "as_gserv"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config ARDUSIMPLE_GSERV_PRIORITY
+	int "Task priority"
+	default 100
+
+config ARDUSIMPLE_GSERV_STACKSIZE
+	int "Stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif

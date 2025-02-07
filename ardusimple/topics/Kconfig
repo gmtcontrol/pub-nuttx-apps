@@ -1,0 +1,24 @@
+
+config ARDUSIMPLE_UORB_TOPICS
+	bool "uORB Topics"
+	default n
+
+if ARDUSIMPLE_UORB_TOPICS
+
+config ARDUSIMPLE_UORB_BATTERY_STATUS
+	bool "Battery Status"
+	default y
+
+config ARDUSIMPLE_UORB_NETWORK_STATUS
+	bool "Network Status"
+	default y
+
+config ARDUSIMPLE_UORB_BTSTACK_STATUS
+	bool "BTstack Status"
+	default y
+
+config ARDUSIMPLE_UORB_RTCM_MESSAGE
+	bool "RTCM Message"
+	default y
+
+endif

@@ -43,3 +43,4 @@ build
 .ccls-cache
 compile_commands.json
 .aider*
+/ardusimple/btstack/data/*.h

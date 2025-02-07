@@ -1,0 +1,93 @@
+############################################################################
+# apps/industry/profinet/Makefile.profinet
+#
+# Licensed to the Apache Software Foundation (ASF) under one or more
+# contributor license agreements.  See the NOTICE file distributed with
+# this work for additional information regarding copyright ownership.  The
+# ASF licenses this file to you under the Apache License, Version 2.0 (the
+# "License"); you may not use this file except in compliance with the
+# License.  You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+# WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+# License for the specific language governing permissions and limitations
+# under the License.
+#
+############################################################################
+
+PNETSTACK_FLAGS =
+PNETSTACK_CONF  = $(APPDIR)/gmtcnt/profinet
+PNETSTACK_ROOT  = $(APPDIR)/industry/profinet/p-net
+
+# Skip files that don't build for this port
+
+PNETSTACK_IGNORE =
+
+ifeq ($(CONFIG_RTLABS_PROFINET_SNMP),)
+PNETSTACK_IGNORE += $(PNETSTACK_ROOT)/src/common/pf_snmp.c
+endif
+
+# Source files for library core
+
+PNETSTACK_SRC  = $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/common/*.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/device/*.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/pnal.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/pnal_eth.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/pnal_udp.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/pnal_filetools.c))
+
+# Source files for SNMP support
+
+ifeq ($(CONFIG_RTLABS_PROFINET_SNMP),y)
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/pnal_snmp.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/system_mib.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpLocalSystemData.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpLocPortTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpConfigManAddrTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpLocManAddrTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpRemTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpRemManAddrTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpXdot3LocPortTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpXdot3RemPortTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpXPnoLocTable.c))
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/mib/lldpXPnoRemTable.c))
+endif
+
+# Source files for OS abstruction layer
+
+PNETSTACK_SRC += $(filter-out $(PNETSTACK_IGNORE), $(wildcard $(PNETSTACK_ROOT)/src/ports/nuttx/osal/*.c))
+
+# Port releated flags
+
+PNETSTACK_FLAGS += -DBYTE_ORDER=LITTLE_ENDIAN
+
+# SNMP support
+
+ifneq ($(CONFIG_RTLABS_PROFINET_SNMP),)
+PNETSTACK_FLAGS += -DPNET_OPTION_SNMP=1
+endif
+
+CSRCS += $(PNETSTACK_SRC)
+
+# Include paths for library
+
+PNETSTACK_INC  = $(PNETSTACK_CONF)
+PNETSTACK_INC += $(PNETSTACK_ROOT)/include
+PNETSTACK_INC += $(PNETSTACK_ROOT)/src
+PNETSTACK_INC += $(PNETSTACK_ROOT)/src/common
+PNETSTACK_INC += $(PNETSTACK_ROOT)/src/device
+PNETSTACK_INC += $(PNETSTACK_ROOT)/src/ports/nuttx
+PNETSTACK_INC += $(PNETSTACK_ROOT)/src/ports/nuttx/osal
+
+# Extra compiler flags
+
+PNETSTACK_FLAGS += -std=c99 -Werror=implicit-function-declaration
+
+# Update the compiler flags
+
+CFLAGS   += $(addprefix ${INCDIR_PREFIX}, $(PNETSTACK_INC))
+CFLAGS   += $(PNETSTACK_FLAGS)
+CXXFLAGS += $(addprefix ${INCDIR_PREFIX}, $(PNETSTACK_INC))

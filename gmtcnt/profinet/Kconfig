@@ -1,0 +1,30 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config GMTCNT_PROFINET
+	bool "Profinet™ device application"
+	default n
+	depends on RTLABS_PROFINET
+	---help---
+		Enable sample application for Profinet™ device protocol.
+
+if GMTCNT_PROFINET
+
+config GMTCNT_PROFINET_PROGNAME
+	string "Program name"
+	default "profinet"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config GMTCNT_PROFINET_PRIORITY
+	int "Task priority"
+	default 100
+
+config GMTCNT_PROFINET_STACKSIZE
+	int "Task stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif # GMTCNT_PROFINET

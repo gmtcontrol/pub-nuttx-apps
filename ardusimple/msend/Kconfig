@@ -1,0 +1,33 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config ARDUSIMPLE_MSEND
+	bool "Message send application"
+	default n
+	---help---
+		Send messages using named FIFO.
+
+if ARDUSIMPLE_MSEND
+
+config ARDUSIMPLE_MSEND_FIFO
+	string "FIFO name"
+	default "/var/fifo0"
+
+config ARDUSIMPLE_MSEND_PROGNAME
+	string "Program name"
+	default "as_msend"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config ARDUSIMPLE_MSEND_PRIORITY
+	int "Task priority"
+	default 100
+
+config ARDUSIMPLE_MSEND_STACKSIZE
+	int "Stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif
