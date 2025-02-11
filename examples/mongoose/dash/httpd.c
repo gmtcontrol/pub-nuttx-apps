@@ -494,36 +494,6 @@ static int system_daemon(int argc, FAR char *argv[])
   char hostadr[20];
   int option, ret;
 
-#ifndef CONFIG_NSH_NETINIT
-  /* We are running standalone (as opposed to a NSH built-in app). Therefore
-   * we need to initialize the network before we start.
-   */
-
-  struct in_addr addr;
-
-  /* Set up our host address */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_IPADDR);
-  netlib_set_ipv4addr("eth0", &addr);
-
-  /* Set up the default router address */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_DRIPADDR);
-  netlib_set_dripv4addr("eth0", &addr);
-
-  /* Setup the subnet mask */
-
-  addr.s_addr = HTONL(CONFIG_EXAMPLES_MONGOOSE_NETMASK);
-  netlib_set_ipv4netmask("eth0", &addr);
-
-  /* New versions of netlib_set_ipvXaddr will not bring the network up,
-   * So ensure the network is really up at this point.
-   */
-
-  netlib_ifup("eth0");
-#endif /* CONFIG_NSH_NETINIT */
-
-#if defined(CONFIG_NET_TCP)
   /* Clear the private data */
 
   memset(priv, 0, sizeof(struct httpd_data_s));
@@ -643,7 +613,6 @@ errout:
   g_httpd_serv.running = false;
   g_httpd_serv.stop    = false;
   g_httpd_serv.pid     = -1;
-#endif /* CONFIG_NET_TCP & CONFIG_NET_UDP */
 
 #ifndef CONFIG_NSH_NETINIT
   /* We are running standalone (as opposed to a NSH built-in app). Therefore

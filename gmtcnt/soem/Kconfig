@@ -13,7 +13,7 @@ config GMTCNT_SOEM
 if GMTCNT_SOEM
 
 config GMTCNT_SOEM_SERVO
-	bool "Servo test"
+	bool "Servo control"
 	default n
 
 config GMTCNT_SOEM_SIMPLE

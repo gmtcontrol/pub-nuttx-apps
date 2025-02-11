@@ -6,6 +6,7 @@
 config NETUTILS_MONGOOSE
 	bool "Mongoose library"
 	default n
+	depends on NET_TCP
 	---help---
 		Mongoose is a network library for C/C++. It provides event-driven
 		non-blocking APIs for TCP, UDP, HTTP, WebSocket, MQTT, and other
