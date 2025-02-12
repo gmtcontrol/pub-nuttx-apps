@@ -534,7 +534,7 @@ static int SDxEC_config(struct ecx_context *context, uint16 slave)
 static void servo_config(char *ifname)
 {
 	int oloop, iloop;
-	int slc;
+	int slc = 0;
 
 	printf("Starting Servo Control\n");
 
@@ -568,6 +568,11 @@ static void servo_config(char *ifname)
 												break;
 										}
 								}
+						}
+					else
+						{
+							printf("No valid slaves found.\n");
+							goto errout;
 						}
 
 					/* Configure the mapping */
@@ -710,7 +715,7 @@ static void servo_config(char *ifname)
 			ec_writestate(0);
       
 			/* stop SOEM, close socket */
-      
+errout:      
 			printf("End servo control, close socket\n");
 			ec_close();
 		}

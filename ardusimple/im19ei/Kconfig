@@ -1,0 +1,53 @@
+#
+# For a description of the syntax of this configuration file,
+# see the file kconfig-language.txt in the NuttX tools repository.
+#
+
+config ARDUSIMPLE_IM19EI
+	bool "IM19EI attitude module"
+	default n
+	---help---
+		This application is test for IM19EI attitude module.
+
+if ARDUSIMPLE_IM19EI
+
+config ARDUSIMPLE_IM19EI_PORT1
+	string "Port 1 device path"
+	default "/dev/ttyS5"
+	---help---
+		IM19EI port 1 device path.
+
+config ARDUSIMPLE_IM19EI_BAUD1
+	int "Port 1 baudrate"
+	default 115200
+	---help---
+		IM19EI port 1 baud rate.
+
+config ARDUSIMPLE_IM19EI_PORT2
+	string "Port 2 device path"
+	default "/dev/ttyS0"
+	---help---
+		IM19EI port 2 device path.
+
+config ARDUSIMPLE_IM19EI_BAUD2
+	int "Port 2 baudrate"
+	default 115200
+	---help---
+		IM19EI port 2 baud rate.
+
+config ARDUSIMPLE_IM19EI_PROGNAME
+	string "Program name"
+	default "im19ei_att"
+	---help---
+		This is the name of the program that will be used when the NSH ELF
+		program is installed.
+
+config ARDUSIMPLE_IM19EI_PRIORITY
+	int "Task priority"
+	default 100
+
+config ARDUSIMPLE_IM19EI_STACKSIZE
+	int "Stack size"
+	default DEFAULT_TASK_STACKSIZE
+
+endif
