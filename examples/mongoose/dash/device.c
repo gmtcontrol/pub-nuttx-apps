@@ -73,10 +73,6 @@
  * Pre-processor Definitions
  ****************************************************************************/
 
-#ifndef CONFIG_EXAMPLES_MONGOOSE_SYSTEM_OTAPATH
-#  define CONFIG_EXAMPLES_MONGOOSE_SYSTEM_OTAPATH   "/dev/img0"
-#endif
-
 /****************************************************************************
  * Private Type
  ****************************************************************************/
@@ -87,7 +83,11 @@
 
 /* Global OTA file descriptor */
 
-int g_ota_fd = -1;
+static int g_ota_fd = -1;
+
+/* Global OTA file path */
+
+static char g_ota_path[16]={0};
 
 /****************************************************************************
  * Mongoose Functions
@@ -116,19 +116,24 @@ bool mg_ota_begin(size_t new_firmware_size)
 
   /* Open the partition to save firmware */
 
-  g_ota_fd = open(CONFIG_EXAMPLES_MONGOOSE_SYSTEM_OTAPATH,
-                  O_CREAT | O_WRONLY, 0777);
+  g_ota_fd = open(g_ota_path, O_CREAT | O_WRONLY, 0777);
   if (g_ota_fd >= 0)
     {
-      /* Erase last sector of the partition to inform file is new */
 
 #ifdef CONFIG_LIBFLASH
-      if (flash_partition_erase_last_sector(g_ota_fd) < 0)
-        {
-          close(g_ota_fd);
-          g_ota_fd = -1;
-          return false;
-        }
+			/* Is it the external flash */
+
+			if (strstr(g_ota_path, "img") != NULL)
+				{
+					/* Erase last sector of the partition to inform file is new */
+
+					if (flash_partition_erase_last_sector(g_ota_fd) < 0)
+						{
+							close(g_ota_fd);
+							g_ota_fd = -1;
+							return false;
+						}
+				}
 #endif /* CONFIG_LIBFLASH */
 
         ret = true;
@@ -187,8 +192,7 @@ size_t mg_ota_size(int fw)
 
   if (fd < 0)
     {
-      fd = open(CONFIG_EXAMPLES_MONGOOSE_SYSTEM_OTAPATH,
-                O_RDONLY, 0777);
+      fd = open(g_ota_path, O_RDONLY, 0777);
     }
 
   if (flash_partition_info(fd, &info) > 0)
@@ -248,4 +252,13 @@ uint32_t mg_ota_crc32(int fw)
 uint32_t mg_ota_timestamp(int fw)
 {
   return 0;
+}
+
+/****************************************************************************
+ * Name: mg_ota_pathname
+ ****************************************************************************/
+
+void mg_ota_pathname(const char *dest)
+{
+	snprintf(g_ota_path, sizeof(g_ota_path), "/dev/%s", dest);
 }

@@ -74,6 +74,7 @@ extern uint32_t mg_ota_crc32    (int fw);
 extern size_t   mg_ota_size     (int fw);
 extern uint32_t mg_ota_timestamp(int fw);
 extern void     mg_device_reset (void);
+extern void 		mg_ota_pathname	(const char *dest);
 
 /****************************************************************************
  * Pre-processor Definitions
@@ -262,6 +263,7 @@ static void handle_firmware_upload(struct mg_connection *c,
                                    struct mg_http_message *hm)
 {
   char name[64], offset[20], total[20];
+	char type[10], dest[16];
   struct mg_str data = hm->body;
   long ofs = -1, tot = -1;
 
@@ -269,7 +271,14 @@ static void handle_firmware_upload(struct mg_connection *c,
   mg_http_get_var(&hm->query, "name", name, sizeof(name));
   mg_http_get_var(&hm->query, "offset", offset, sizeof(offset));
   mg_http_get_var(&hm->query, "total", total, sizeof(total));
-  MG_INFO(("File %s, offset %s, len %lu", name, offset, data.len));
+  mg_http_get_var(&hm->query, "type", type, sizeof(type));
+  mg_http_get_var(&hm->query, "dest", dest, sizeof(dest));
+  MG_INFO(("File %s, offset %s, len %lu, type %s, dest %s", name, offset, data.len,
+																														type, dest));
+
+	/* Prepare the OTA path name */
+
+	mg_ota_pathname(dest);
 
   if ((ofs = mg_json_get_long(mg_str(offset), "$", -1)) < 0 ||
       (tot = mg_json_get_long(mg_str(total), "$", -1)) < 0)

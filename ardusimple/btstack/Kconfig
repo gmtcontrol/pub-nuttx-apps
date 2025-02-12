@@ -4,7 +4,7 @@
 #
 
 config ARDUSIMPLE_BTSTACK
-	tristate "BTStack application"
+	bool "BTStack application"
   depends on BTSTACK
 	default n
 	---help---
@@ -102,6 +102,22 @@ config ARDUSIMPLE_BTSTACK_SPP_GATT_STREAMER
 endchoice # "SPP Type"
 
 endif # ARDUSIMPLE_BTSTACK_SPP
+
+if ARDUSIMPLE_BTSTACK_SPP_MAPKIT || ARDUSIMPLE_BTSTACK_SPP_NORDIC_LE_MAPKIT
+config ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2
+	bool "Use GNSS port 2"
+	default n
+	---help---
+		User GNSS port 2 to inject RTCM data.
+endif # ARDUSIMPLE_BTSTACK_SPP_MAPKIT || ARDUSIMPLE_BTSTACK_SPP_NORDIC_LE_MAPKIT
+
+if ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2
+config ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2_PATH
+	string "GNSS port 2 path"
+	default "/dev/ttyS3"
+	---help---
+		GNSS port 2 default path.
+endif
 
 if ARDUSIMPLE_BTSTACK_HID
 

@@ -74,7 +74,7 @@
 #ifdef CONFIG_EXAMPLES_CHEN_DEVNAME
 #  define CHEN_DEVPATH CONFIG_EXAMPLES_CHEN_DEVNAME
 #else
-#  define CHEN_DEVPATH "/dev/gpio8"
+#  define CHEN_DEVPATH "/dev/gpio5"
 #endif
 
 /****************************************************************************

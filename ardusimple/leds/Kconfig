@@ -30,7 +30,7 @@ config ARDUSIMPLE_LEDS_STACKSIZE
 
 config ARDUSIMPLE_LEDS_PWMPATH
 	string "LED PWM path"
-	default "/dev/pwm2"
+	default "/dev/pwm1"
 
 config ARDUSIMPLE_LEDS_DEVPATH
 	string "LED device path"
@@ -38,6 +38,6 @@ config ARDUSIMPLE_LEDS_DEVPATH
 
 config ARDUSIMPLE_LEDS_LEDSET
 	hex "Subset of LEDs to use"
-	default 0x3f
+	default 0x07
 
 endif # ARDUSIMPLE_LEDS

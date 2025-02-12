@@ -64,6 +64,8 @@
 #include <string.h>
 #include <unistd.h>
 #include <poll.h>
+#include <fcntl.h>
+#include <termios.h>
 
 #include <nuttx/mm/circbuf.h>
 #include <uORB/uORB.h>
@@ -97,6 +99,9 @@ struct mapkit_data_s
   uint16_t rfcomm_mtu;
   uint8_t spp_serv_buf[150];
   struct circbuf_s circ;
+#ifdef CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2
+  int fd;
+#endif
 
   /* uORB Subscribers */
 
@@ -183,11 +188,139 @@ static void rfcomm_ertm_released_handler(uint16_t ertm_id)
 #endif
 
 /****************************************************************************
+ * Name: open_serial
+ ****************************************************************************/
+
+#ifdef CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2
+static int open_serial(FAR const char *devpath, uint32_t baudrate)
+{
+  struct termios tio;
+  int fd, ret, baud;
+
+  /* Open the serial port */
+
+  fd = open(devpath, O_RDWR);
+  if (fd < 0)
+    {
+      printf("ERROR: Failed to open device path (%s)!\n",
+             devpath);
+      return -1;
+    }
+
+  /* Fill the termios struct with the current values. */
+
+  ret = tcgetattr(fd, &tio);
+  if (ret < 0)
+    {
+      printf("ERROR: Failed to get attributes (%d)!\n", 
+             errno);
+      close(fd);
+      return -1;
+    }
+
+  /* Configure a baud rate.
+   * NuttX doesn't support different baud rates for RX and TX.
+   * So, both cfisetospeed() and cfisetispeed() are overwritten
+   * by cfsetspeed.
+   */
+  switch (baudrate)
+    {
+      case 921600:
+        baud = B921600;
+        break;
+
+      case 460800:
+        baud = B460800;
+        break;
+
+      case 230400:
+        baud = B230400;
+        break;
+
+      case 115200:
+        baud = B115200;
+        break;
+
+      case 57600:
+        baud = B57600;
+        break;
+
+      case 38400:
+        baud = B38400;
+        break;
+
+      case 19200:
+        baud = B19200;
+        break;
+
+      case 9600:
+        baud = B9600;
+        break;
+
+      default:
+        baud = B38400;
+    }
+
+  ret = cfsetspeed(&tio, baud);
+  if (ret < 0)
+    {
+      printf("ERROR: Failed to set baud rate (%d)\n", 
+             errno);
+      close(fd);
+      return -1;
+    }
+
+  /* Configure 1 stop bits. */
+
+  tio.c_cflag &= ~CSTOPB;
+
+  /* Disable parity. */
+
+  tio.c_cflag &= ~PARENB;
+
+  /* Change the data size to 8 bits */
+
+  tio.c_cflag &= ~CSIZE; /* Clean the bits */
+  tio.c_cflag |= CS8;    /* 8 bits */
+
+  /* Disable the HW flow control */
+
+  tio.c_cflag &= ~CCTS_OFLOW;    /* Output flow control */
+  tio.c_cflag &= ~CRTS_IFLOW;    /* Input flow control */
+
+  /* Change the attributes now. */
+
+  ret = tcsetattr(fd, TCSANOW, &tio);
+  if (ret < 0)
+    {
+      /* Print the error code in the loop because at this
+       * moment the serial attributes already changed
+       */
+
+      printf("ERROR: Failed to change attributes (%d)\n", 
+             errno);
+      close(fd);
+      return -1;
+    }
+
+  close(fd);
+
+  /* Now, we should reopen the terminal with the new
+   * attributes to see if they took effect;
+   */
+
+  /* Reopen the GNSS serial port */
+
+  return open(devpath, O_RDONLY);
+}
+#endif /* CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2 */
+
+/****************************************************************************
  * Name: sensor_subscribe
  ****************************************************************************/
 
 static struct pollfd *sensor_subscribe(struct mapkit_data_s *priv,
-                                       FAR const char *topic_name,
+                                       const char *topic_name,
                                        float topic_rate,
                                        int topic_latency)
 {
@@ -276,22 +409,12 @@ static void spp_send_packet(struct mapkit_data_s *priv)
 }
 
 /****************************************************************************
- * Name: uorb_ondata
- *
- * Description:
- *   Print topic data by its print_message callback.
- *
- * Input Parameters:
- *   meta         The uORB metadata.
- *   fd           Subscriber handle.
- *
- * Returned Value:
- *   0 on success copy, otherwise -1
+ * Name: sensor_ondata
  ****************************************************************************/
 
-static int uorb_ondata(struct mapkit_data_s *priv,
-                       FAR const struct orb_metadata *meta,
-                       int fd)
+static int sensor_ondata(struct mapkit_data_s *priv,
+                      	 const struct orb_metadata *meta,
+                         int fd)
 {
   char buffer[meta->o_size];
   FAR struct sensor_gnss_raw *gnss = (FAR struct sensor_gnss_raw *)buffer;
@@ -335,7 +458,7 @@ static void sensor_poll(struct mapkit_data_s *priv)
         {
           if (fds->revents & POLLIN)
             {
-              if (uorb_ondata(priv, obj->meta, fds->fd) < 0)
+              if (sensor_ondata(priv, obj->meta, fds->fd) < 0)
                 {
                   break;
                 }
@@ -493,7 +616,19 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
       break;
 
     case RFCOMM_DATA_PACKET:
+    {
+      const uint8_t *msgPtr = packet;
+      const uint32_t msgLen = MIN(RTCM_MESSAGE_SIZE, size);
 
+#ifdef CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2
+
+      /* Send the RTCM data to the GNSS device */     
+
+      if (write(priv->fd, msgPtr, msgLen) != msgLen)
+        {
+
+        }
+#else
       /* Check the publish topic validity */
 
       if (priv->pub.rtcm.file > 0)
@@ -501,8 +636,8 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
           /* Save the received data */
 
           memcpy(priv->pub.rtcm.data.msg,
-                 packet,
-                 priv->pub.rtcm.data.len = MIN(RTCM_MESSAGE_SIZE, size));
+                 msgPtr,
+                 priv->pub.rtcm.data.len = msgLen);
 
           /* Publish the data */
 
@@ -516,7 +651,9 @@ static void packet_handler(uint8_t packet_type, uint16_t channel, uint8_t *packe
                     SNIOC_INJECT_DATA,
                     (unsigned long)(uintptr_t)&priv->pub.rtcm.data);
         }
+#endif /* CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2 */
         break;
+    }
 
     default:
         break;
@@ -544,7 +681,7 @@ int btstack_app(int argc, FAR char *argv[])
   ret = circbuf_init(&priv->circ, NULL, GNSS_MSG_SIZE * GNSS_MSG_NUM);
   if (ret < 0)
     {
-      fprintf(stderr, "ERROR: circbuf_init error\n");
+      fprintf(stderr, "ERROR: Failed to initialize GNSS circular buffer\n");
       return EXIT_FAILURE;
     }
 
@@ -552,15 +689,29 @@ int btstack_app(int argc, FAR char *argv[])
 
   if (!sensor_subscribe(priv, "sensor_gnss_raw0", 1000/POLL_PERIOD_MS, 0))
     {
+      fprintf(stderr, "ERROR: Failed to subscribe GNSS raw data\n");
+      circbuf_uninit(&priv->circ);
+      return EXIT_FAILURE;
+    } 
+
+  /* Open the GNSS port 2 to supply RTCM messages */
+
+#ifdef CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2
+  priv->fd = open_serial(CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2_PATH, 460800);
+  if (priv->fd < 0)
+    {
+      fprintf(stderr, "ERROR: Failed to open GNSS port 2\n");
+      orb_close(priv->sub.gnss.fds->fd);
       circbuf_uninit(&priv->circ);
       return EXIT_FAILURE;
     }
+#else
 
   /* Create the publish file for RTCM */
-
   priv->pub.rtcm.file = orb_advertise(ORB_ID(rtcm_message), 0);
   priv->pub.rtcm.data.msg = g_rtcm_buf;
   priv->pub.rtcm.data.len = 0;
+#endif /* CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2 */
 
   /* Create the publish file for BTstack */
 
