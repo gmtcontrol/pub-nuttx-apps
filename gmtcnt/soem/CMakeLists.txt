@@ -20,130 +20,19 @@
 
 if(CONFIG_GMTCNT_SOEM)
 
-if(CONFIG_GMTCNT_SOEM_SERVO)
+if(CONFIG_GMTCNT_SOEM_SDXEC)
 	nuttx_add_application(
 		MODULE
 		${CONFIG_GMTCNT_SOEM}
 		NAME
-		soem_servo
+		ec_sdxec
 		PRIORITY
 		${CONFIG_GMTCNT_SOEM_PRIORITY}
 		STACKSIZE
 		${CONFIG_GMTCNT_SOEM_STACKSIZE}
 		SRCS
-		servo/servo.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_SIMPLE)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_simple
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			simple_test/simple_test.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_RED)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_red
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			red_test/red_test.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_SLINFO)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_slinfo
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			slaveinfo/slaveinfo.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_EBOX)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_ebox
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			ebox/ebox.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_EOE)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_eoe
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			eoe_test/eoe_test.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_E2PROMTOOL)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_e2promtool
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			eepromtool/eepromtool.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_ALIASTOOL)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_aliastool
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			aliastool/aliastool.c)
-	endif
-
-	if(CONFIG_GMTCNT_SOEM_FWUPDATE)
-		nuttx_add_application(
-			MODULE
-			${CONFIG_GMTCNT_SOEM}
-			NAME
-			soem_fwupdate
-			PRIORITY
-			${CONFIG_GMTCNT_SOEM_PRIORITY}
-			STACKSIZE
-			${CONFIG_GMTCNT_SOEM_STACKSIZE}
-			SRCS
-			firm_update/firm_update.c)
+		servo/mc_profile.c
+		servo/sdxec_servo.c)
 	endif
 
 	endif()

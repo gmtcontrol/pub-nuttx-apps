@@ -20,4 +20,6 @@
 
 ifneq ($(CONFIG_GMTCNT_SOEM),)
 CONFIGURED_APPS += $(APPDIR)/gmtcnt/soem
+CFLAGS += ${INCDIR_PREFIX}$(APPDIR)/gmtcnt/soem/include
+CXXFLAGS += ${INCDIR_PREFIX}$(APPDIR)/gmtcnt/soem/include
 endif

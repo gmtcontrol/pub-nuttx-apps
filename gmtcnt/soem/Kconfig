@@ -8,52 +8,20 @@ config GMTCNT_SOEM
 	default n
 	depends on RTLABS_SOEM
 	---help---
-		Enable sample application(s) for EtherCAT™ protocol.
+		Enable application(s) for EtherCAT™ protocol.
 
 if GMTCNT_SOEM
 
-config GMTCNT_SOEM_SERVO
-	bool "Servo control"
-	default n
-
-config GMTCNT_SOEM_SIMPLE
-	bool "Simple test"
-	default n
-
-config GMTCNT_SOEM_RED
-	bool "Redundant test"
-	default n
-
-config GMTCNT_SOEM_SLINFO
-	bool "Slave info test"
-	default n
-
-config GMTCNT_SOEM_EBOX
-	bool "E/BOX test"
-	default n
-
-config GMTCNT_SOEM_EOE
-	bool "EoE test"
-	default n
-
-config GMTCNT_SOEM_E2PROMTOOL
-	bool "EEPROM tool"
-	default n
-
-config GMTCNT_SOEM_ALIASTOOL
-	bool "Alias tool"
-	default n
-
-config GMTCNT_SOEM_FWUPDATE
-	bool "Firmware update tool"
+config GMTCNT_SOEM_SDXEC
+	bool "SDxEC servo control"
 	default n
 
 config GMTCNT_SOEM_PRIORITY
 	int "Task priority"
-	default 100
+	default 225
 
 config GMTCNT_SOEM_STACKSIZE
 	int "Task stack size"
-	default DEFAULT_TASK_STACKSIZE
+	default 8192
 
 endif # GMTCNT_SOEM

@@ -1,233 +1,80 @@
-/** \file
- * \brief Example code for Simple Open EtherCAT master
+/****************************************************************************
+ * apps/gmtcnt/soem/servo/servo.c
  *
- * Usage : ebox [ifname] [cycletime]
- * ifname is NIC interface, f.e. eth0
- * cycletime in us, f.e. 500
+ * SPDX-License-Identifier: Apache-2.0
  *
- * This test is specifically build for the E/BOX.
+ * Licensed to the Apache Software Foundation (ASF) under one or more
+ * contributor license agreements.  See the NOTICE file distributed with
+ * this work for additional information regarding copyright ownership.  The
+ * ASF licenses this file to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance with the
+ * License.  You may obtain a copy of the License at
  *
- * (c)Arthur Ketels 2011
- */
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ ****************************************************************************/
 
+/****************************************************************************
+ * Included Files
+ ****************************************************************************/
+
+#include <nuttx/config.h>
+
+#include <sys/time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
-#include <unistd.h>
-#include <sched.h>
 #include <string.h>
-#include <sys/time.h>
 #include <time.h>
 #include <pthread.h>
-#include <math.h>
+#include <sched.h>
 
-#include "ethercat.h"
+#include <servo.h>
 
 /****************************************************************************
  * Pre-processor Definitions
  ****************************************************************************/
 
-/* Servo ID */
-
-#define SDxEC_MAN 	(0x00004321)
-#define SDxEC_ID  	(0x000010D3)
-
-/* CANopen DS402 0x6060 Control word */
-
-#define CTRLW_SHUTDOWN				0x0006U
-#define CTRLW_SWITCH_ON				0x0007U
-#define CTRLW_ENABLE_OPER			0x000FU
-#define CTRLW_FAULT_RESET			0x0080U
-#define CTRLW_DISABLE_VOLTAGE	0x0000U
-#define CTRLW_QUICK_STOP			0x0002U
-#define CTRLW_SET_ABS_POINT		0x001FU
-
-/* CANopen DS402 0x6041 Status word */
-
-#define STATW_MASK								(0x7F)
-#define STATW_READY_TO_SWITCH_ON	(1U << 0)
-#define STATW_SWITCHED_ON					(1U << 1)
-#define STATW_OPERATION_ENABLE		(1U << 2)
-#define STATW_FAULT_MODE					(1U << 3)
-#define STATW_VOLTAGE_ENABLED			(1U << 4)
-#define STATW_QUICK_STOP					(1U << 5)
-#define STATW_SWITCH_ON_DISABLED	(1U << 6)
-#define STATW_WARNING							(1U << 7)
-#define STATW_REMOTE							(1U << 9)
-#define STATW_TARGET_REACHED			(1U << 10)
-#define STATW_INT_LIMIT_ACTIVE		(1U << 11)
-#define STATW_SETPOINT_ACK				(1U << 12)
-
-/* CANopen Mode of Operation */
-
-#define OPMOD_NO_MODE					(-1)
-#define OPMOD_POSITION				( 1)
-#define OPMOD_VELOCITY				( 3)
-#define OPMOD_TORQUE					( 4)
-#define OPMOD_HOME						( 6)
-#define OPMOD_POSITION_CYC		( 8)
-
-/* States */
-
-#define STATE_OFF				(	STATW_SWITCH_ON_DISABLED )
-#define STATE_READY			(	STATW_VOLTAGE_ENABLED | \
-													STATW_READY_TO_SWITCH_ON )
-#define STATE_ON 				(	STATW_QUICK_STOP | \
-													STATW_VOLTAGE_ENABLED | \
-													STATW_OPERATION_ENABLE | \
-													STATW_SWITCHED_ON | \
-													STATW_READY_TO_SWITCH_ON )
-#define STATE_HOMING		( STATW_QUICK_STOP | \
-													STATW_VOLTAGE_ENABLED | \
-													STATW_OPERATION_ENABLE | \
-													STATW_SWITCHED_ON | \
-													STATW_READY_TO_SWITCH_ON | \
-													STATW_TARGET_REACHED | \
-													STATW_SETPOINT_ACK )
-#define STATE_DISABLED	( STATW_QUICK_STOP | \
-													STATW_VOLTAGE_ENABLED | \
-													STATW_SWITCHED_ON | \
-													STATW_READY_TO_SWITCH_ON)
-#define STATE_FAULT 		( STATW_FAULT_MODE )
-
-#define EC_TIMEOUTRST		(10000)
-#define EC_TIMEOUTMON		(500)
-
-/* sample interval in ns, here 1000us -> 1kHz */
-
-#define SYNC0TIME				(1000 * 1000)
-
-/* CANOpen Finite State Machine states */
-
-enum
-{
-	FSM_NONE,
-	FSM_START,
-	FSM_RESET,
-	FSM_PREPARE,
-	FSM_SWITCH_ON,
-	FSM_ON,
-	FSM_SETMODE,
-	FSM_SETPOS,
-	FSM_MOVE,
-	FSM_FAULT
-};
+#ifndef CONFIG_GMTCNT_REALTIME_PRIORITY
+#define CONFIG_GMTCNT_REALTIME_PRIORITY		(250)
+#endif
 
 /****************************************************************************
  * Private Type
  ****************************************************************************/
 
-/* EtherCAT PDO Map type */
-
-typedef struct PACKED
-{
-	uint16_t index;
-	void 		*data;
-	uint16_t size;
-} pdo_map_t;
-
-/* RxPDO 1 Data Type */
-
-typedef struct PACKED
-{
-	uint16_t control_word;   		// 0x6040
-	int32_t  target_position;  	// 0x607A
-	uint16_t touch_probe_func;	// 0x60B8
-} sdxec_rxpdo1_t;
-
-/* RxPDO 1 Mapping */
+/* RxPDO 1 Mapping (0x1600) */
 
 static const uint32_t g_rxpdo1_map[] = 
 {
 	0x60400010,
+	0x60710010,
+	0x60FF0020,
 	0x607A0020,
-	0x60B80010,
+	0x60810020,
+	0x60830020,
+	0x60840020,
 };
 static const uint16_t g_rxpdo1_map_cnt = sizeof(g_rxpdo1_map) / sizeof(g_rxpdo1_map[0]);
 
-/* RxPDO 2 Data Type */
-
-typedef struct PACKED
-{
-	uint16_t control_word;   		// 0x6040
-	uint8_t  operation_mode;		// 0x6060
-	int16_t  torque_offset;			// 0x60B2
-	int32_t  target_velocity; 	// 0x60FF
-} sdxec_rxpdo2_t;
-
-/* RxPDO 2 Mapping */
+/* RxPDO 2 Mapping (0x1601) */
 
 static const uint32_t g_rxpdo2_map[] = 
 {
-	0x60400010,
-	0x60600008,
-	0x60B20010,
-	0x60FF0020,
-};
-static const uint16_t g_rxpdo2_map_cnt = sizeof(g_rxpdo2_map) / sizeof(g_rxpdo2_map[0]);
-
-/* RxPDO 3 Data Type */
-
-typedef struct PACKED
-{
-	uint16_t control_word;   		// 0x6040
-	uint8_t  operation_mode;		// 0x6060
-	int16_t  target_torque;  		// 0x6071
-	uint32_t torque_slope;			// 0x6087
-} sdxec_rxpdo3_t;
-
-/* RxPDO 3 Mapping */
-
-static const uint32_t g_rxpdo3_map[] = 
-{
-	0x60400010,
-	0x60600008,
-	0x60710010,
-	0x60870020,
-};
-static const uint16_t g_rxpdo3_map_cnt = sizeof(g_rxpdo3_map) / sizeof(g_rxpdo3_map[0]);
-
-/* RxPDO 4 Data Type */
-
-typedef struct PACKED
-{
-	uint16_t control_word;   		// 0x6040
-	uint8_t  operation_mode;		// 0x6060
-	int32_t  home_offset;				// 0x607C
-	int8_t 	 home_mode;					// 0x6098
-	uint32_t home_fast_vel;			// 0x6099, Sub:1
-	uint32_t home_slow_vel;			// 0x6099, Sub:2
-	uint32_t home_accel;				// 0x609A
-} sdxec_rxpdo4_t;
-
-/* RxPDO 4 Mapping */
-
-static const uint32_t g_rxpdo4_map[] = 
-{
-	0x60400010,
-	0x60600008,
-	0x607C0020,
 	0x60980008,
 	0x60990120,
 	0x60990220,
 	0x609A0020,
+	0x607C0020,
 };
-static const uint16_t g_rxpdo4_map_cnt = sizeof(g_rxpdo4_map) / sizeof(g_rxpdo4_map[0]);
+static const uint16_t g_rxpdo2_map_cnt = sizeof(g_rxpdo2_map) / sizeof(g_rxpdo2_map[0]);
 
-/* TxPDO 1 Data Type */
-
-typedef struct PACKED
-{
-	uint16_t error_code;     		// 0x603F
-	uint16_t status_word;    		// 0x6041
-	int8_t 	 operation_mode; 		// 0x6061
-	int32_t  actual_position; 	// 0x6064
-	uint16_t touch_probe_stat; 	// 0x60B9
-	int32_t  touch_probe_pos; 	// 0x60BA
-	uint32_t digital_inputs; 		// 0x60FD
-} sdxec_txpdo1_t;
-
-/* TxPDO 1 Mapping */
+/* TxPDO 1 Mapping (0x1A00) */
 
 static const uint32_t g_txpdo1_map[] = 
 {
@@ -235,21 +82,19 @@ static const uint32_t g_txpdo1_map[] =
 	0x60410010, 
 	0x60610008,
 	0x60640020,
-	0x60B90010, 
-	0x60BA0020, 
-	0x60FD0020
+	0x606C0020,
+	0x60770010,
+	0x60FD0020,
 };
 static const uint16_t g_txpdo1_map_cnt = sizeof(g_txpdo1_map) / sizeof(g_txpdo1_map[0]);
 
 /* Device PDO Maps */
 
-static const pdo_map_t g_pdo_map[]=
+static const pdo_map_s g_pdo_map[]=
 {
-	{ 0x1600, (void*)g_rxpdo1_map, g_rxpdo1_map_cnt },
-	{ 0x1601, (void*)g_rxpdo2_map, g_rxpdo2_map_cnt },
-	{ 0x1602, (void*)g_rxpdo3_map, g_rxpdo3_map_cnt },
-	{ 0x1604, (void*)g_rxpdo4_map, g_rxpdo4_map_cnt },
-	{ 0x1A00, (void*)g_txpdo1_map, g_txpdo1_map_cnt },
+	{ 0x1600, g_rxpdo1_map_cnt, g_rxpdo1_map },
+	{ 0x1601, g_rxpdo2_map_cnt, g_rxpdo2_map },
+	{ 0x1A00, g_txpdo1_map_cnt, g_txpdo1_map },
 };
 static const uint16_t g_pdo_map_cnt = sizeof(g_pdo_map) / sizeof(g_pdo_map[0]);
 
@@ -265,27 +110,11 @@ static const uint16_t g_sm3_map_cnt = sizeof(g_sm3_map) / sizeof(g_sm3_map[0]);
  * Private Data
  ****************************************************************************/
 
+static sdxec_data_s		 g_sdxec_data;
 static pthread_t 			 g_thread_check;
 static pthread_t 			 g_thread_rt;
 static pthread_cond_t  g_cond  = PTHREAD_COND_INITIALIZER;
 static pthread_mutex_t g_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct 
-{
-	uint8_t  IOmap[256];
-	uint32_t cycle;
-	uint16_t run;
-	uint16_t group;
-	uint32_t expectedWKC;
-	uint32_t wkc;
-
-	sdxec_txpdo1_t *pTxPDO1;
-	sdxec_rxpdo1_t *pRxPDO1;
-	sdxec_rxpdo2_t *pRxPDO2;
-	sdxec_rxpdo3_t *pRxPDO3;
-	sdxec_rxpdo4_t *pRxPDO4;
-	bool needlf;
-} sdxec_data;
 
 /****************************************************************************
  * Private Functions
@@ -318,85 +147,145 @@ uint64_t getMonotonicTimestampUSec(void)
 }
 
 /****************************************************************************
- * Name: ecat_power
+ * Name: mc_fsm_proc
  ****************************************************************************/
 
-static uint32_t g_ec_power_state = FSM_NONE;
-static uint64_t g_start_motor_ts;
-
-static void ecat_power(void)
+static void mc_fsm_proc(void *arg)
 {
-	switch (g_ec_power_state)
+	sdxec_data_s *sdxec = (sdxec_data_s*)arg;
+
+	/* check the slave id validity */
+
+	if (sdxec->slc == EC_INVSLAVE)
 		{
-			case FSM_NONE:
+			sdxec->mc.state = FSM_MC_NONE;
+		}
+
+	/* MC states */
+
+	switch (sdxec->mc.state)
+		{
+			case FSM_MC_NONE:
+			{
 				break;
+			}
 
-			case FSM_START:
-				g_start_motor_ts = getMonotonicTimestampUSec();
-				sdxec_data.pRxPDO1->control_word = CTRLW_FAULT_RESET;
-				sdxec_data.pRxPDO2->control_word = CTRLW_FAULT_RESET;
-				g_ec_power_state = FSM_RESET;
+			case FSM_MC_POWER:
+			{
+				sdxec->rxpdo->control_word = CWORD_FAULT_RESET;
+
+				sdxec->mc.start = getMonotonicTimestampUSec();
+				sdxec->mc.state = FSM_MC_RESET;
 				break;
+			}
 
-			case FSM_RESET:
-				sdxec_data.pRxPDO1->control_word = CTRLW_SHUTDOWN;
-				sdxec_data.pRxPDO2->control_word = CTRLW_SHUTDOWN;
+			case FSM_MC_RESET:
+			{
+				sdxec->rxpdo->control_word = CWORD_SHUTDOWN;
 
-				if ((getMonotonicTimestampUSec() - g_start_motor_ts) > EC_TIMEOUTRST)
+				if ((getMonotonicTimestampUSec() - sdxec->mc.start) > EC_TIMEOUTRST)
 					{
-						g_ec_power_state = FSM_PREPARE;
+						sdxec->mc.state = FSM_MC_PREPARE;
 					}
 				break;
+			}
 
-			case FSM_PREPARE:
-				sdxec_data.pRxPDO1->control_word = CTRLW_SWITCH_ON;
-				sdxec_data.pRxPDO2->control_word = CTRLW_SWITCH_ON;
+			case FSM_MC_PREPARE:
+			{
+				sdxec->rxpdo->control_word = CWORD_SWITCH_ON;
 
-				if ((sdxec_data.pTxPDO1->status_word & STATE_READY) == STATE_READY)
+				if ((sdxec->txpdo->status_word & STATE_READY) == STATE_READY)
 					{
-						g_ec_power_state = FSM_SWITCH_ON;
+						sdxec->mc.state = FSM_MC_SWITCH_ON;
 					}
 				break;
+			}
 
-			case FSM_SWITCH_ON:
-				sdxec_data.pRxPDO1->control_word = CTRLW_ENABLE_OPER;
-				sdxec_data.pRxPDO2->control_word = CTRLW_ENABLE_OPER;
+			case FSM_MC_SWITCH_ON:
+			{
+				sdxec->rxpdo->control_word = CWORD_ENABLE_OPER;
 
-				if ((sdxec_data.pTxPDO1->status_word & STATE_ON) == STATE_ON)
+				if ((sdxec->txpdo->status_word & STATE_ON) == STATE_ON)
 					{
-						g_ec_power_state = FSM_ON;
+						sdxec->mc.state = FSM_MC_ON;
 					}
 				break;
+			}
 
-			case FSM_ON:
-				g_ec_power_state = FSM_NONE;
+			case FSM_MC_ON:
+			{
+				sdxec->mc.state = FSM_MC_NONE;
 				break;
+			}
 
-			case FSM_SETMODE:
-				sdxec_data.pRxPDO1->target_position = 0;
-				sdxec_data.pRxPDO2->operation_mode  = 8;
-				g_ec_power_state = FSM_SETPOS;
+			case FSM_MC_POSITION:
+			{
+				sdxec->mc.state = FSM_MC_NONE;
 				break;
+			}
 
-			case FSM_SETPOS:
-				sdxec_data.pRxPDO1->target_position += 20000;
-				if ((sdxec_data.pTxPDO1->status_word & STATW_SETPOINT_ACK) == STATW_SETPOINT_ACK)
+			case FSM_MC_ACCEL:
+			{
+				switch (sdxec->txpdo->operation_mode)
 					{
-						g_ec_power_state = FSM_MOVE;
+						case OPMOD_VELOCITY:
+						{
+							/* Is the moving started ? */
+
+							if ((sdxec->txpdo->status_word & SBITS_PV_MOTOR_STOPPED) != SBITS_PV_MOTOR_STOPPED)
+								{
+									sdxec->mc.state = FSM_MC_MOVE;
+								}
+							break;
+						}
+
+						case OPMOD_POSITION:
+						{
+							/* Is the setpoint accepted ? */
+
+							if ((sdxec->txpdo->status_word & SBITS_PP_SETPOINT_ACK) == SBITS_PP_SETPOINT_ACK)
+								{
+									sdxec->mc.state = FSM_MC_MOVE;
+								}
+							break;
+						}
 					}
 				break;
+			}
 
-			case FSM_MOVE:
-				sdxec_data.pRxPDO1->control_word = CTRLW_SET_ABS_POINT;
-				sdxec_data.pRxPDO2->control_word = CTRLW_SET_ABS_POINT;
-				
-				if ((sdxec_data.pTxPDO1->status_word & STATW_TARGET_REACHED) == STATW_TARGET_REACHED)
+			case FSM_MC_DECEL:
+			{
+				switch (sdxec->txpdo->operation_mode)
 					{
-						sdxec_data.pRxPDO1->control_word = CTRLW_ENABLE_OPER;
-						sdxec_data.pRxPDO2->control_word = CTRLW_ENABLE_OPER;
-						g_ec_power_state = FSM_SETPOS;
+						case OPMOD_VELOCITY:
+						{
+							/* Is the moving stoped ? */
+
+							if ((sdxec->txpdo->status_word & SBITS_PV_MOTOR_STOPPED) == SBITS_PV_MOTOR_STOPPED)
+								{
+									sdxec->mc.state = FSM_MC_MOVE;
+								}
+							break;
+						}
+
+						case OPMOD_POSITION:
+						{
+							break;
+						}
 					}
 				break;
+			}
+
+			case FSM_MC_MOVE:
+			{
+				/* wait till to target reached */
+
+				if ((sdxec->txpdo->status_word & SBITS_TARGET_REACHED) == SBITS_TARGET_REACHED)
+					{
+						sdxec->mc.state = FSM_MC_NONE;
+					}
+				break;
+			}
 		}
 }
 
@@ -410,6 +299,7 @@ static int mapPDO(const uint16_t  slave,
 									const uint8_t   dataSize)
 {
 	uint8_t subIndex;
+	int bits = 0;
 	int wkc = 0;
 
 	/* Unmap previous registers, setting 0 in PDO_MAP subindex 0 */
@@ -422,7 +312,14 @@ static int mapPDO(const uint16_t  slave,
 	for (uint8_t i = 0; i < dataSize; i++)
 	{
 			subIndex = i + 1;
+
+			/* write the SDO */
+
 			wkc += ec_SDOwrite(slave, index, subIndex, FALSE, sizeof(data[i]), (void*)&data[i], EC_TIMEOUTRXM);
+
+			/* get the index bit counts */
+
+			bits += (index & 0xff);
 	}
 
 	/* Enable mapping by setting number of registers in PDO_MAP subindex 0 */
@@ -470,8 +367,8 @@ static int mapSM(const uint16_t  slave,
  * Name: SDxEC_setup
  ****************************************************************************/
 
-static int SDxEC_setup(uint16_t 				slave, 
-											 const pdo_map_t *pdo_map, uint16_t pdo_cnt,
+static int SDxEC_setup(uint16_t slave, 
+											 const pdo_map_s *pdo_map, uint16_t pdo_cnt,
 											 const uint16_t  *sm2_map, uint16_t sm2_cnt,
 											 const uint16_t  *sm3_map, uint16_t sm3_cnt)
 {
@@ -521,17 +418,16 @@ static int SDxEC_setup(uint16_t 				slave,
 
 static int SDxEC_config(struct ecx_context *context, uint16 slave)
 {
-	return SDxEC_setup(slave, 
-										 g_pdo_map, g_pdo_map_cnt,
-										 g_sm2_map, g_sm2_map_cnt,
-										 g_sm3_map, g_sm3_map_cnt);
+	return SDxEC_setup(slave, g_pdo_map, g_pdo_map_cnt,
+										 				g_sm2_map, g_sm2_map_cnt,
+										 				g_sm3_map, g_sm3_map_cnt);
 }
 
 /****************************************************************************
  * Name: servo_config
  ****************************************************************************/
 
-static void servo_config(char *ifname)
+static void servo_config(sdxec_data_s *sdxec, const char *ifname)
 {
 	int oloop, iloop;
 	int slc = 0;
@@ -558,13 +454,17 @@ static void servo_config(char *ifname)
 								{
 									/* GMT SDxEC, using ec_slave[].name is not very reliable */
 
-									if ((ec_slave[slc].eep_man == SDxEC_MAN) && (ec_slave[slc].eep_id == SDxEC_ID))
+									if ((ec_slave[slc].eep_man == SDxEC_MAN) && (ec_slave[slc].eep_id == SD3EC_ID))
 										{
 												printf("Found %s at position %d\n", ec_slave[slc].name, slc);
 
 												/* link slave specific setup to preop->safeop hook */
 
 												ec_slave[slc].PO2SOconfigx = &SDxEC_config;
+
+												/* update the slave id */
+
+												sdxec->slc = slc;
 												break;
 										}
 								}
@@ -577,7 +477,7 @@ static void servo_config(char *ifname)
 
 					/* Configure the mapping */
 
-					ec_config_map(&sdxec_data.IOmap);
+					ec_config_map(&sdxec->IOmap);
 					ec_configdc();
 					printf("Slaves mapped, state to SAFE_OP.\n");
 
@@ -604,8 +504,8 @@ static void servo_config(char *ifname)
 																									(int)ec_group[0].IOsegment[3]);
 					printf("Request operational state for all slaves\n");
 
-         	sdxec_data.expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
-					printf("Calculated workcounter %d\n", (int)sdxec_data.expectedWKC);
+         	sdxec->expectedWKC = (ec_group[0].outputsWKC * 2) + ec_group[0].inputsWKC;
+					printf("Calculated workcounter %d\n", (int)sdxec->expectedWKC);
 
 					/* send one processdata cycle to init SM in slaves */
 				
@@ -623,59 +523,38 @@ static void servo_config(char *ifname)
           if (ec_slave[0].state == EC_STATE_OPERATIONAL)
 						{
 							printf("Operational state reached for all slaves.\n");
-							sdxec_data.run = 1;
+							sdxec->run = 1;
 
 							/* wait for nuttx to sync on DC */
 
 							osal_usleep(100000);
 
 							/* SYNC0 on slave */
-
-							ec_dcsync0(slc, TRUE, SYNC0TIME, 0);
-
+							#if EC_SYNC0TIME > 0
+							ec_dcsync0(slc, TRUE, EC_SYNC0TIME, 0);
+							#endif
+							
 							/* assign the PDO data */
 
-							sdxec_data.pTxPDO1 = (sdxec_txpdo1_t *)(ec_slave[0].inputs );
-							sdxec_data.pRxPDO1 = (sdxec_rxpdo1_t *)(ec_slave[0].outputs);
-							sdxec_data.pRxPDO2 = (sdxec_rxpdo2_t *)(ec_slave[0].outputs + sizeof(sdxec_rxpdo1_t));
+							sdxec->txpdo = (sdxec_txpdo_s *)(ec_slave[0].inputs );
+							sdxec->rxpdo = (sdxec_rxpdo_s *)(ec_slave[0].outputs);
 
-							/* start the state machine */
+							/* Power ON the motor drive */
 
-							g_ec_power_state = FSM_START;
-						
-							/* cyclic loop, reads data from RT thread */
-
-							for (int i = 1; i <= 500; i++)
+							if (MC_Power(sdxec) == OK)
 								{
-									if (sdxec_data.wkc >= sdxec_data.expectedWKC)
-										{
-											#if 0
-											printf("Processdata cycle %4d, WKC %d , O:", (int)sdxec_data.cycle, 
-																																	 (int)sdxec_data.wkc);
-											for (int j = 0 ; j < oloop; j++)
-												{
-													printf(" %2.2x", *(ec_slave[0].outputs + j));
-												}
+									/* Endless movement */
 
-											printf(" I:");
-											for (int j = 0 ; j < iloop; j++)
-												{
-													printf(" %2.2x", *(ec_slave[0].inputs + j));
-												}
-											printf(" T:%lld\r", ec_DCtime);
-											#else
-											printf("Error : %04X ", sdxec_data.pTxPDO1->error_code);
-											printf("Status: %04X ", sdxec_data.pTxPDO1->status_word);
-											printf("OpMode: %02X ", sdxec_data.pTxPDO1->operation_mode);
-											printf("ActPos: %08d ", (int)sdxec_data.pTxPDO1->actual_position);
-											printf(" T:%lld\r", ec_DCtime);
-											#endif
-											sdxec_data.needlf = TRUE;
-										}
-									osal_usleep(50000);
+									//MC_MoveVelocity(sdxec, 500000, 100000, 100000, 0, 0);
+
+									MC_MoveRelative(sdxec, 500000, 200000, 50000, 50000, 0);
+									MC_MoveRelative(sdxec, 500000, 300000, 50000, 50000, 0);
+									MC_MoveRelative(sdxec, 500000, 400000, 50000, 50000, 0);
 								}
 						
-							sdxec_data.run = 0;
+							/* stop RT thread process  */
+
+							sdxec->run = 0;
 						}
 					else
 						{
@@ -697,7 +576,9 @@ static void servo_config(char *ifname)
          
 			/* SYNC0 off */
 
-			ec_dcsync0(slc, FALSE, SYNC0TIME, 0);
+			#if EC_SYNC0TIME > 0
+			ec_dcsync0(slc, FALSE, EC_SYNC0TIME, 0);
+			#endif
 			printf("\nRequest safe operational state for all slaves\n");
 			
 			/* request SAFE_OP state for all slaves */
@@ -732,7 +613,7 @@ errout:
  * 
  ****************************************************************************/
 
-void add_timespec(struct timespec *ts, int64 addtime)
+static void add_timespec(struct timespec *ts, int64 addtime)
 {
 	int64 sec, nsec;
 
@@ -755,7 +636,7 @@ void add_timespec(struct timespec *ts, int64 addtime)
  * 
  ****************************************************************************/
 
-void ec_sync(int64 reftime, int64 cycletime , int64 *offsettime)
+static void ec_sync(int64 reftime, int64 cycletime , int64 *offsettime)
 {
 	static int64 integral = 0;
 	int64 delta;
@@ -789,8 +670,9 @@ void ec_sync(int64 reftime, int64 cycletime , int64 *offsettime)
  * 
  ****************************************************************************/
 
-static void ecat_thread(void *ptr)
+static void ecat_thread(void *arg)
 {
+	sdxec_data_s *sdxec = (sdxec_data_s*)arg;
 	struct timespec ts;
 	struct timeval tp;
 	int64 cycletime;
@@ -811,8 +693,8 @@ static void ecat_thread(void *ptr)
 
 	/* cycletime in ns */
 
-	cycletime = *((int*)ptr) * 1000;
-	sdxec_data.run = 0;
+	cycletime = sdxec->cycle_time;
+	sdxec->run = 0;
 
 	while (1)
   	{
@@ -823,11 +705,11 @@ static void ecat_thread(void *ptr)
 			/* wait to cycle start */
       
 			pthread_cond_timedwait(&g_cond, &g_mutex, &ts);
-      if (sdxec_data.run > 0)
+      if (sdxec->run > 0)
       	{
 					/* Communication state machine  */
 
-					ecat_power();
+					mc_fsm_proc(arg);
 
 					/* update the time */
 
@@ -836,8 +718,8 @@ static void ecat_thread(void *ptr)
 					/* Send/Receive data */
 
          	ec_send_processdata();
-         	sdxec_data.wkc = ec_receive_processdata(EC_TIMEOUTRET);
-         	sdxec_data.cycle++;
+         	sdxec->wkc = ec_receive_processdata(EC_TIMEOUTRET);
+         	sdxec->cycle++;
 
          	/* calulate toff to get nuttx time and DC synced */
          	
@@ -853,31 +735,25 @@ static void ecat_thread(void *ptr)
  * 
  ****************************************************************************/
 
-static void ecat_check(void *ptr)
+static void ecat_check(void *arg)
 {
+	sdxec_data_s *sdxec = (sdxec_data_s*)arg;
 	int slave;
-	UNUSED(ptr);
 
 	while (1)
 		{
-			if (sdxec_data.run && ((sdxec_data.wkc < sdxec_data.expectedWKC) || ec_group[sdxec_data.group].docheckstate))
+			if (sdxec->run && ((sdxec->wkc < sdxec->expectedWKC) || ec_group[sdxec->group].docheckstate))
 				{
-					if (sdxec_data.needlf)
-						{
-							sdxec_data.needlf = FALSE;
-							printf("\n");
-						}
-					
 					/* one ore more slaves are not responding */
 					
-					ec_group[sdxec_data.group].docheckstate = FALSE;
+					ec_group[sdxec->group].docheckstate = FALSE;
 					ec_readstate();
 					
 					for (slave = 1; slave <= ec_slavecount; slave++)
 						{
-							if ((ec_slave[slave].group == sdxec_data.group) && (ec_slave[slave].state != EC_STATE_OPERATIONAL))
+							if ((ec_slave[slave].group == sdxec->group) && (ec_slave[slave].state != EC_STATE_OPERATIONAL))
 								{
-									ec_group[sdxec_data.group].docheckstate = TRUE;
+									ec_group[sdxec->group].docheckstate = TRUE;
 									if (ec_slave[slave].state == (EC_STATE_SAFE_OP + EC_STATE_ERROR))
 										{
 											printf("ERROR : slave %d is in SAFE_OP + ERROR, attempting ack.\n", slave);
@@ -929,7 +805,7 @@ static void ecat_check(void *ptr)
 								}
 						}
 
-					if (!ec_group[sdxec_data.group].docheckstate)
+					if (!ec_group[sdxec->group].docheckstate)
 						{
 							printf("OK : all slaves resumed OPERATIONAL.\n");
 						}
@@ -944,51 +820,73 @@ static void ecat_check(void *ptr)
 
 int main(int argc, char *argv[])
 {
-	struct sched_param schedp;
+	sdxec_data_s *sdxec = &g_sdxec_data;
 	struct sched_param param;
-	int policy = SCHED_OTHER;
+	pthread_attr_t attr;
+	int ret;
 
-	/* 1ms cycle time */
+	printf("SOEM (Simple Open EtherCAT Master)\nSDxEC servo control\n");
 
-	int ctime = 1000;
+	memset( sdxec, 0, sizeof(sdxec_data_s));
+	memset(&param, 0, sizeof(struct sched_param));
 
-	printf("SOEM (Simple Open EtherCAT Master)\nServo control\n");
+	/* cycle time */
 
-	memset(&sdxec_data, 0, sizeof(sdxec_data));
-	memset(&schedp, 0, sizeof(schedp));
-	memset(&param, 0, sizeof(param));
+	sdxec->cycle_time = EC_CYCLETIME;
+
+	/* invalidate teh slave id */
+
+	sdxec->slc = EC_INVSLAVE;
+
+  /* configure slave error handling thread */
+
+	param.sched_priority = CONFIG_GMTCNT_SOEM_PRIORITY;
+  pthread_attr_init(&attr);
+  pthread_attr_setstacksize(&attr, 4096);
+	pthread_attr_setschedparam(&attr, &param);
 
   /* create thread to handle slave error handling in OP */
-	
-	osal_thread_create(&g_thread_check, 
-										 8192,
-										 (void*) &ecat_check, 
-										 (void*) &ctime);
 
-	/* do not set priority above SCHED_HPWORKPRIORITY, otherwise sockets are starved */
+	ret = pthread_create(&g_thread_check, 
+								 			 &attr, 
+								 			 (void*) &ecat_check, 
+								 			 (void*) sdxec);
+	if (ret < 0)
+		{
+			printf("ERROR: Failed to create error handling thread!\n");
+			return EXIT_FAILURE;
+		}
 
-	schedp.sched_priority = CONFIG_GMTCNT_SOEM_PRIORITY;
-	sched_setscheduler(0, SCHED_FIFO, &schedp);
-	usleep(1000);
+  /* configure the real time thread */
 
-	/* create RT thread */
+  pthread_attr_init(&attr);
+	param.sched_priority = CONFIG_GMTCNT_REALTIME_PRIORITY;
+  pthread_attr_setstacksize(&attr, 4096);
+	pthread_attr_setschedparam(&attr, &param);
 
-	osal_thread_create(&g_thread_rt, 
-								 		 8192, 
-								 		 (void*) &ecat_thread, 
-								 		 (void*) &ctime);
+  /* create the real time thread */
 
-	/* give it higher priority */
+	ret = pthread_create(&g_thread_rt, 
+								 			 &attr, 
+								 			 (void*) &ecat_thread, 
+								 			 (void*) sdxec);
+	if (ret < 0)
+		{
+			printf("ERROR: Failed to create real-time thread!\n");
+			return EXIT_FAILURE;
+		}
 
-	param.sched_priority = CONFIG_GMTCNT_SOEM_PRIORITY + 1;
-	pthread_setschedparam(g_thread_rt, policy, &param);
+	/* change the scheduler policy of real-time thread */
+
+	pthread_setschedparam(g_thread_rt, SCHED_FIFO, &param);
 
 	/* start acyclic part */
 
-	servo_config(argv[1]);
+	servo_config(sdxec, argv[1]);
 
-	schedp.sched_priority = 0;
-	sched_setscheduler(0, SCHED_OTHER, &schedp);
+	/* revert the scheduler policy of real-time thread */
+
+	pthread_setschedparam(g_thread_rt, SCHED_OTHER, &param);
 
 	printf("End program\n");
 

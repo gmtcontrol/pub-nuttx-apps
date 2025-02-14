@@ -311,7 +311,7 @@ static int open_serial(FAR const char *devpath, uint32_t baudrate)
 
   /* Reopen the GNSS serial port */
 
-  return open(devpath, O_RDONLY);
+  return open(devpath, O_RDWR);
 }
 #endif /* CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2 */
 
@@ -697,7 +697,8 @@ int btstack_app(int argc, FAR char *argv[])
   /* Open the GNSS port 2 to supply RTCM messages */
 
 #ifdef CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2
-  priv->fd = open_serial(CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2_PATH, 460800);
+  priv->fd = open_serial(CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2_PATH,
+                         CONFIG_ARDUSIMPLE_BTSTACK_MAPKIT_GNSS_PORT2_BAUD);
   if (priv->fd < 0)
     {
       fprintf(stderr, "ERROR: Failed to open GNSS port 2\n");
